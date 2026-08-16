@@ -1,6 +1,6 @@
-# [SK] SFP + FVG / IFVG + RSI v5.2
+# [SK] SFP + FVG / IFVG v5.3
 
-Ta wersja łączy bieżący radar SFP, najbliższe strefy FVG/IFVG z 1H, opisy dni tygodnia i klasyczne RSI 14 w jednym wskaźniku. Panel Inputs ma wyłącznie cztery przełączniki: `SFP`, `FVG / IFVG 1H`, `Dni tygodnia` i `Alerty`. RSI działa stale z klasycznymi parametrami, a ustawienia zaawansowane nie zaśmiecają panelu.
+Ta wersja łączy bieżący radar SFP, najbliższe strefy FVG/IFVG z 1H i opisy dni tygodnia w jednym wskaźniku. Panel Inputs ma wyłącznie cztery przełączniki: `SFP`, `FVG / IFVG 1H`, `Dni tygodnia` i `Alerty`. Ustawienia zaawansowane są celowo stałe, żeby nie zaśmiecać panelu.
 
 ## Co oznacza linia, a co sygnał
 
@@ -33,18 +33,15 @@ Wskaźnik przechowuje najwyżej jeden ostatni potwierdzony sygnał i domyślnie 
 
 - Wszystkie strefy są liczone z zamkniętych świec godzinowych, niezależnie od interwału otwartego wykresu.
 - Klasyczne wzrostowe FVG: minimum trzeciej świecy 1H jest powyżej maksimum pierwszej. Spadkowe działa odwrotnie.
-- Wskaźnik rysuje najwyżej najbliższą wzrostową i najbliższą spadkową strefę, zamiast wyświetlać całą historię.
-- Box jest żółty, bez obramowania, zaczyna się dokładnie na otwarciu świecy tworzącej układ i kończy na prawej krawędzi aktualnej świecy. Z każdą świecą wydłuża się razem z rynkiem, ale nie wystaje w pustą przyszłość.
+- Wskaźnik rysuje do trzech najbliższych aktywnych stref nad ceną i do trzech pod ceną, zamiast wyświetlać całą historię.
+- Granice boxu są dokładnie równe knotom pierwszej i trzeciej świecy klasycznego układu. Nie są liczone z korpusów, ATR ani przybliżonych poziomów.
+- Box jest żółty, bez obramowania, zaczyna się dokładnie na otwarciu trzeciej świecy tworzącej układ i kończy na prawej krawędzi aktualnej świecy. Z każdą świecą wydłuża się razem z rynkiem, ale nie wystaje w pustą przyszłość.
 - W środku boxu widnieje `FVG 1H` albo `IFVG 1H`.
-- Pełne wypełnienie knotem usuwa strefę. Zamknięcie godzinowe przez przeciwną krawędź zmienia FVG w IFVG; pełne wypełnienie aktywnego IFVG również je usuwa.
+- Pełne wypełnienie knotem usuwa strefę. Zamknięcie godzinowe przez przeciwną krawędź zmienia FVG w IFVG; pełne wypełnienie aktywnego IFVG również je usuwa. Stare IFVG wygasają po 72 godzinach, żeby dawna inwersja nie tworzyła ogromnego, nieaktualnego boxu.
 
 ## Dni tygodnia
 
 Przełącznik `Dni tygodnia` dodaje na dole cienkie nazwy wszystkich siedmiu dni, wyśrodkowane pomiędzy dwiema kolejnymi północami, oraz krótkie półprzezroczyste separatory. Strefa `Europe/Warsaw` automatycznie uwzględnia zmianę czasu.
-
-## Klasyczne RSI
-
-RSI jest liczone z ceny zamknięcia i ma stały okres `14`. Fioletowa linia znajduje się w osobnym dolnym panelu, z poziomami `70`, `50` i `30` oraz delikatnie zaznaczonym zakresem 30–70. SFP, FVG/IFVG i dni pozostają na głównym wykresie dzięki `force_overlay`, więc cały pakiet nadal liczy się jako jeden wskaźnik TradingView.
 
 ## Alerty i ograniczenia
 

@@ -1,15 +1,16 @@
-# SK SFP + FVG / IFVG + RSI
+# SK SFP + FVG / IFVG
 
-Publiczny wskaźnik TradingView napisany w Pine Script v6. Łączy radar aktualnych poziomów SFP, najbliższe strefy FVG/IFVG z interwału 1H, oznaczenia dni tygodnia i klasyczne RSI 14.
+Publiczny wskaźnik TradingView napisany w Pine Script v6. Łączy radar aktualnych poziomów SFP, najbliższe strefy FVG/IFVG z interwału 1H oraz oznaczenia dni tygodnia.
 
 ## Funkcje
 
 - dwa najbliższe poziomy SFP nad i pod ceną,
 - zachowanie wykorzystanych poziomów jako `DOTKNIĘTY HIGH/LOW`,
 - potwierdzenia SFP po wybiciu struktury,
-- najbliższe FVG i IFVG wyliczane z zamkniętych świec 1H,
+- do trzech najbliższych aktywnych FVG/IFVG nad ceną i do trzech pod ceną,
+- klasyczne, trzyświecowe FVG wyliczane wyłącznie z zamkniętych świec 1H,
+- dokładne granice stref według knotów pierwszej i trzeciej świecy,
 - krótkie separatory i nazwy dni tygodnia,
-- klasyczne RSI 14 w dolnym panelu,
 - alerty dotknięcia i potwierdzenia SFP oraz zmian FVG/IFVG.
 
 ## Instalacja
@@ -23,9 +24,9 @@ Pełny opis poziomów, ustawień i alertów znajduje się w [`SFP_WSKAZNIK_INSTR
 
 ## Stan projektu
 
-Aktualna wersja: **5.2**. Kod kompiluje się w Pine Script v6 bez błędów i ostrzeżeń.
+Aktualna wersja: **5.3**. Kod kompiluje się w Pine Script v6 bez błędów i ostrzeżeń.
 
-Najważniejsza rzecz do dalszego dopracowania to geometria i selekcja stref FVG/IFVG. Obecna implementacja celowo pokazuje tylko najbliższe strefy, ale nie każda strefa pokrywa się idealnie z ręcznym odczytem rynku. Zmiany będziemy rozwijać wersjami i weryfikować na różnych instrumentach oraz interwałach.
+W wersji 5.3 geometria FVG została przebudowana według klasycznej reguły trzech świec. Strefa zaczyna się na trzeciej świecy układu, zachowuje stałe poziome granice i jest wydłużana tylko do aktualnej świecy. Wypełnione strefy są usuwane, a stare IFVG wygasają, dzięki czemu na wykresie pozostaje do trzech najbliższych aktywnych stref po każdej stronie ceny.
 
 ## Ważne
 

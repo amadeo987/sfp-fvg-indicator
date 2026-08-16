@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG + RSI v5.2
+// [SK] SFP + FVG / IFVG v5.3
 // Radar aktualnych pul płynności, na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep i powrót tworzą setup. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG + RSI v5.2", shorttitle = "SK SFP+FVG+RSI 5.2", overlay = false, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 20)
+indicator("[SK] SFP + FVG / IFVG v5.3", shorttitle = "SK SFP5.3", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30)
 
 // ==================== PROSTE USTAWIENIA ====================
 bool wlaczSfp = input.bool(true, "SFP — poziomy i potwierdzenia", group = "Włącz / wyłącz")
@@ -51,6 +51,8 @@ color kolorLong = color.rgb(38, 166, 154)
 
 float minWielkoscFvgAtr = 0.12
 int maksWiekStrefFvg = 300
+int maksWiekStrefIfvg = 72
+int ileFvgNaStrone = 3
 color kolorStrefyFvg = color.rgb(255, 193, 7)
 int przezroczystoscFvg = 72
 
@@ -443,9 +445,10 @@ if barstate.islast
                     array.push(etykietyRadaru, lb)
                 narysowaneLow += 1
 
-// ==================== FVG / IFVG 1H — TYLKO NAJBLIŻSZE ====================
-// Dane są zawsze liczone z potwierdzonych świec godzinowych. Offset [1] z
-// lookahead_on udostępnia wyłącznie ostatnią zamkniętą godzinę.
+// ==================== FVG / IFVG 1H — NAJBLIŻSZE NAD I POD CENĄ ====================
+// Dane pochodzą wyłącznie z zamkniętych świec godzinowych. W klasycznym
+// układzie trzech świec [3] jest świecą pierwszą, a [1] trzecią i już
+// potwierdzoną. Dzięki temu granice strefy nie zmieniają się po jej utworzeniu.
 [h1Czas, h1High, h1Low, h1Close, h1HighPierwszej, h1LowPierwszej, h1Atr] = request.security(syminfo.tickerid, "60", [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
 int zmianaH1Czas = ta.change(h1Czas)
 bool nowaZamknietaGodzina = not na(h1Czas) and zmianaH1Czas != 0
@@ -455,6 +458,8 @@ var float[] dolyStref = array.new_float()
 var int[] kierunkiStref = array.new_int()       // 1 = wzrostowa, -1 = spadkowa
 var bool[] strefyOdwrocone = array.new_bool()   // false = FVG, true = IFVG
 var int[] czasyStartuStref = array.new_int()
+var int[] czasyInwersjiStref = array.new_int()
+var box[] narysowaneStrefyFvg = array.new_box()
 
 bool noweBullFvg = false
 bool noweBearFvg = false
@@ -471,6 +476,7 @@ if not wlaczFvg
     array.clear(kierunkiStref)
     array.clear(strefyOdwrocone)
     array.clear(czasyStartuStref)
+    array.clear(czasyInwersjiStref)
 
 if wlaczFvg and nowaZamknietaGodzina
     // Najpierw aktualizujemy wcześniejsze strefy ostatnią zamkniętą świecą 1H.
@@ -481,7 +487,10 @@ if wlaczFvg and nowaZamknietaGodzina
             int kierunek = array.get(kierunkiStref, i)
             bool odwrocona = array.get(strefyOdwrocone, i)
             int czasStartu = array.get(czasyStartuStref, i)
-            bool zaStara = h1Czas - czasStartu > maksWiekStrefFvg * 60 * 60 * 1000
+            int czasInwersji = array.get(czasyInwersjiStref, i)
+            int czasWieku = odwrocona and not na(czasInwersji) ? czasInwersji : czasStartu
+            int limitWieku = odwrocona ? maksWiekStrefIfvg : maksWiekStrefFvg
+            bool zaStara = h1Czas - czasWieku > limitWieku * 60 * 60 * 1000
             bool usunStrefe = zaStara
 
             if not usunStrefe and not odwrocona
@@ -491,7 +500,7 @@ if wlaczFvg and nowaZamknietaGodzina
                     int nowyKierunek = -kierunek
                     array.set(kierunkiStref, i, nowyKierunek)
                     array.set(strefyOdwrocone, i, true)
-                    array.set(czasyStartuStref, i, h1Czas)
+                    array.set(czasyInwersjiStref, i, h1Czas)
                     noweBullIfvg := nowyKierunek == 1
                     noweBearIfvg := nowyKierunek == -1
                     noweIfvgGora := gora
@@ -509,6 +518,7 @@ if wlaczFvg and nowaZamknietaGodzina
                 array.remove(kierunkiStref, i)
                 array.remove(strefyOdwrocone, i)
                 array.remove(czasyStartuStref, i)
+                array.remove(czasyInwersjiStref, i)
 
     // Nowe klasyczne FVG powstaje po zamknięciu trzeciej świecy 1H.
     bool kandydatBullFvg = not na(h1Atr) and h1Atr > 0 and h1Low > h1HighPierwszej and h1Low - h1HighPierwszej >= h1Atr * minWielkoscFvgAtr
@@ -522,6 +532,7 @@ if wlaczFvg and nowaZamknietaGodzina
         array.push(kierunkiStref, bull ? 1 : -1)
         array.push(strefyOdwrocone, false)
         array.push(czasyStartuStref, h1Czas)
+        array.push(czasyInwersjiStref, int(na))
         noweBullFvg := bull
         noweBearFvg := not bull
         noweFvgGora := gora
@@ -533,73 +544,80 @@ if wlaczFvg and nowaZamknietaGodzina
         array.shift(kierunkiStref)
         array.shift(strefyOdwrocone)
         array.shift(czasyStartuStref)
+        array.shift(czasyInwersjiStref)
 
-// Z całej pamięci wybieramy tylko najbliższą wzrostową i najbliższą spadkową strefę.
-int indeksBull = -1
-int indeksBear = -1
-float odlegloscBull = 1e20
-float odlegloscBear = 1e20
+// Strefy wybieramy według ich położenia względem bieżącej ceny, a nie według
+// kierunku. Dzięki temu radar może równocześnie pokazać do trzech najbliższych
+// luk nad ceną i do trzech pod ceną. Strefa aktualnie przecinana przez cenę
+// trafia na stronę zgodną z jej aktywnym kierunkiem reakcji.
+int[] wybraneStrefyNad = array.new_int()
+int[] wybraneStrefyPod = array.new_int()
 if wlaczFvg and array.size(goryStref) > 0
-    for i = 0 to array.size(goryStref) - 1
-        float gora = array.get(goryStref, i)
-        float dol = array.get(dolyStref, i)
-        int kierunek = array.get(kierunkiStref, i)
-        float odleglosc = close > gora ? close - gora : close < dol ? dol - close : 0.0
-        if kierunek == 1 and odleglosc < odlegloscBull
-            indeksBull := i
-            odlegloscBull := odleglosc
-        if kierunek == -1 and odleglosc < odlegloscBear
-            indeksBear := i
-            odlegloscBear := odleglosc
+    for slot = 0 to ileFvgNaStrone - 1
+        int najlepszyIndeksNad = -1
+        float najlepszaOdlegloscNad = 1e20
+        int najnowszyCzasNad = 0
+        for i = 0 to array.size(goryStref) - 1
+            float gora = array.get(goryStref, i)
+            float dol = array.get(dolyStref, i)
+            int kierunek = array.get(kierunkiStref, i)
+            bool przecinaCene = close >= dol and close <= gora
+            bool jestNadCena = dol > close or (przecinaCene and kierunek == -1)
+            float odleglosc = jestNadCena ? math.max(dol - close, 0.0) : 1e20
+            int czasStartu = array.get(czasyStartuStref, i)
+            bool lepsza = odleglosc < najlepszaOdlegloscNad or (odleglosc == najlepszaOdlegloscNad and czasStartu > najnowszyCzasNad)
+            if jestNadCena and not array.includes(wybraneStrefyNad, i) and lepsza
+                najlepszyIndeksNad := i
+                najlepszaOdlegloscNad := odleglosc
+                najnowszyCzasNad := czasStartu
+        if najlepszyIndeksNad >= 0
+            array.push(wybraneStrefyNad, najlepszyIndeksNad)
 
-var box boxBull = na
-var box boxBear = na
+    for slot = 0 to ileFvgNaStrone - 1
+        int najlepszyIndeksPod = -1
+        float najlepszaOdlegloscPod = 1e20
+        int najnowszyCzasPod = 0
+        for i = 0 to array.size(goryStref) - 1
+            float gora = array.get(goryStref, i)
+            float dol = array.get(dolyStref, i)
+            int kierunek = array.get(kierunkiStref, i)
+            bool przecinaCene = close >= dol and close <= gora
+            bool jestPodCena = gora < close or (przecinaCene and kierunek == 1)
+            float odleglosc = jestPodCena ? math.max(close - gora, 0.0) : 1e20
+            int czasStartu = array.get(czasyStartuStref, i)
+            bool lepsza = odleglosc < najlepszaOdlegloscPod or (odleglosc == najlepszaOdlegloscPod and czasStartu > najnowszyCzasPod)
+            if jestPodCena and not array.includes(wybraneStrefyPod, i) and lepsza
+                najlepszyIndeksPod := i
+                najlepszaOdlegloscPod := odleglosc
+                najnowszyCzasPod := czasStartu
+        if najlepszyIndeksPod >= 0
+            array.push(wybraneStrefyPod, najlepszyIndeksPod)
 
 if barstate.islast
-    if wlaczFvg and indeksBull >= 0
-        float gora = array.get(goryStref, indeksBull)
-        float dol = array.get(dolyStref, indeksBull)
-        int lewo = array.get(czasyStartuStref, indeksBull)
-        string tekst = array.get(strefyOdwrocone, indeksBull) ? "IFVG 1H" : "FVG 1H"
-        if na(boxBull)
-            boxBull := box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.new(color.white, 0), text_size = size.small, text_halign = text.align_center, text_valign = text.align_center, force_overlay = true)
-        else
-            box.set_left(boxBull, lewo)
-            box.set_right(boxBull, time_close)
-            box.set_top(boxBull, gora)
-            box.set_bottom(boxBull, dol)
-            box.set_text(boxBull, tekst)
-    else if not na(boxBull)
-        box.delete(boxBull)
-        boxBull := na
+    if array.size(narysowaneStrefyFvg) > 0
+        for i = array.size(narysowaneStrefyFvg) - 1 to 0
+            box.delete(array.get(narysowaneStrefyFvg, i))
+    array.clear(narysowaneStrefyFvg)
 
-    if wlaczFvg and indeksBear >= 0
-        float gora = array.get(goryStref, indeksBear)
-        float dol = array.get(dolyStref, indeksBear)
-        int lewo = array.get(czasyStartuStref, indeksBear)
-        string tekst = array.get(strefyOdwrocone, indeksBear) ? "IFVG 1H" : "FVG 1H"
-        if na(boxBear)
-            boxBear := box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.new(color.white, 0), text_size = size.small, text_halign = text.align_center, text_valign = text.align_center, force_overlay = true)
-        else
-            box.set_left(boxBear, lewo)
-            box.set_right(boxBear, time_close)
-            box.set_top(boxBear, gora)
-            box.set_bottom(boxBear, dol)
-            box.set_text(boxBear, tekst)
-    else if not na(boxBear)
-        box.delete(boxBear)
-        boxBear := na
+    if wlaczFvg and array.size(wybraneStrefyNad) > 0
+        for i = 0 to array.size(wybraneStrefyNad) - 1
+            int indeks = array.get(wybraneStrefyNad, i)
+            float gora = array.get(goryStref, indeks)
+            float dol = array.get(dolyStref, indeks)
+            int lewo = array.get(czasyStartuStref, indeks)
+            string tekst = array.get(strefyOdwrocone, indeks) ? "IFVG 1H" : "FVG 1H"
+            box nowyBox = box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.white, text_size = size.small, text_halign = text.align_center, text_valign = text.align_center)
+            array.push(narysowaneStrefyFvg, nowyBox)
 
-// ==================== KLASYCZNE RSI 14 ====================
-// Wskaźnik działa w osobnym panelu RSI, a wszystkie obiekty SFP/FVG są
-// wymuszone na głównym wykresie przez force_overlay. Dzięki temu całość nadal
-// liczy się jako jeden wskaźnik na wykresie.
-float rsi14 = ta.rsi(close, 14)
-plot(rsi14, title = "RSI 14", color = color.rgb(126, 87, 194), linewidth = 2)
-rsiGorna = hline(70, title = "RSI — wykupienie", color = color.new(color.gray, 45), linestyle = hline.style_dashed)
-rsiSrodek = hline(50, title = "RSI — środek", color = color.new(color.gray, 72), linestyle = hline.style_dotted)
-rsiDolna = hline(30, title = "RSI — wyprzedanie", color = color.new(color.gray, 45), linestyle = hline.style_dashed)
-fill(rsiGorna, rsiDolna, color = color.new(color.rgb(126, 87, 194), 92), title = "Tło RSI 30–70")
+    if wlaczFvg and array.size(wybraneStrefyPod) > 0
+        for i = 0 to array.size(wybraneStrefyPod) - 1
+            int indeks = array.get(wybraneStrefyPod, i)
+            float gora = array.get(goryStref, indeks)
+            float dol = array.get(dolyStref, indeks)
+            int lewo = array.get(czasyStartuStref, indeks)
+            string tekst = array.get(strefyOdwrocone, indeks) ? "IFVG 1H" : "FVG 1H"
+            box nowyBox = box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.white, text_size = size.small, text_halign = text.align_center, text_valign = text.align_center)
+            array.push(narysowaneStrefyFvg, nowyBox)
 
 // ==================== DNI TYGODNIA (CZAS WARSZAWSKI) ====================
 int czasDniaWarszawa = time("D", "0000-2359:1234567", strefaCzasowaDni)
@@ -657,7 +675,7 @@ float pierwszyLow = array.size(wybraneLow) > 0 ? array.get(wybraneLow, 0) : na
 var table panel = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 20), frame_color = color.new(color.gray, 65), frame_width = 1, force_overlay = true)
 if barstate.islast
     if pokazPanel
-        table.cell(panel, 0, 0, "SK SFP + FVG + RSI v5.2", text_color = color.white)
+        table.cell(panel, 0, 0, "SK SFP + FVG v5.3", text_color = color.white)
         table.cell(panel, 1, 0, timeframe.period + " / " + tryb, text_color = color.white)
         table.cell(panel, 0, 1, "Najbliższy high", text_color = kolorHigh)
         table.cell(panel, 1, 1, f_cena(pierwszyHigh), text_color = color.white)
