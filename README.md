@@ -4,9 +4,10 @@ Publiczny wskaźnik TradingView napisany w Pine Script v6. Łączy radar aktualn
 
 ## Funkcje
 
-- dwa najbliższe poziomy SFP nad i pod ceną,
-- zachowanie wykorzystanych poziomów jako `DOTKNIĘTY HIGH/LOW`,
-- potwierdzenia SFP po wybiciu struktury,
+- dwa najbliższe poziomy `SFP WATCH` nad i pod ceną,
+- zachowanie wykorzystanych poziomów jako `WATCH — DOTKNIĘTY`,
+- cienki, opcjonalny `SFP RAW` po prawidłowym sweepie i powrocie korpusu,
+- mocny `SFP CONF` dopiero po późniejszym wybiciu struktury,
 - do trzech najbliższych aktywnych FVG/IFVG nad ceną i do trzech pod ceną,
 - klasyczne, trzyświecowe FVG wyliczane wyłącznie z zamkniętych świec 1H,
 - dokładne granice stref według knotów pierwszej i trzeciej świecy,
@@ -24,9 +25,9 @@ Pełny opis poziomów, ustawień i alertów znajduje się w [`SFP_WSKAZNIK_INSTR
 
 ## Stan projektu
 
-Aktualna wersja: **5.3**. Kod kompiluje się w Pine Script v6 bez błędów i ostrzeżeń.
+Aktualna wersja: **5.4**. Kod kompiluje się w Pine Script v6 bez błędów i ostrzeżeń.
 
-W wersji 5.3 geometria FVG została przebudowana według klasycznej reguły trzech świec. Strefa zaczyna się na trzeciej świecy układu, zachowuje stałe poziome granice i jest wydłużana tylko do aktualnej świecy. Wypełnione strefy są usuwane, a stare IFVG wygasają, dzięki czemu na wykresie pozostaje do trzech najbliższych aktywnych stref po każdej stronie ceny.
+W wersji 5.4 warstwa SFP ma jednoznaczną hierarchię `WATCH → RAW → CONF`. WATCH nie udaje gotowego SFP, RAW pokazuje zamknięty setup po sweepie, a CONF wymaga późniejszego wybicia struktury. RAW ma osobny przełącznik i nie zmienia istniejącej logiki alertów potwierdzenia.
 
 ## Ważne
 

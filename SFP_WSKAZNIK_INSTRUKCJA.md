@@ -1,29 +1,24 @@
-# [SK] SFP + FVG / IFVG v5.3
+# [SK] SFP + FVG / IFVG v5.4
 
-Ta wersja łączy bieżący radar SFP, najbliższe strefy FVG/IFVG z 1H i opisy dni tygodnia w jednym wskaźniku. Panel Inputs ma wyłącznie cztery przełączniki: `SFP`, `FVG / IFVG 1H`, `Dni tygodnia` i `Alerty`. Ustawienia zaawansowane są celowo stałe, żeby nie zaśmiecać panelu.
+Ta wersja łączy bieżący radar SFP, najbliższe strefy FVG/IFVG z 1H i opisy dni tygodnia w jednym wskaźniku. Panel Inputs ma pięć prostych przełączników: `SFP`, `SFP RAW`, `FVG / IFVG 1H`, `Dni tygodnia` i `Alerty`. Ustawienia zaawansowane są celowo stałe, żeby nie zaśmiecać panelu.
 
 ## Co oznacza linia, a co sygnał
 
-- `SFP HIGH 1/2` (niebieski): potwierdzony swing high i aktualny poziom płynności, na którym **może** powstać bearish SFP.
-- `SFP LOW 1/2` (turkusowy): potwierdzony swing low i aktualny poziom płynności, na którym **może** powstać bullish SFP.
-- `DOTKNIĘTY HIGH/LOW` (przygaszony, przerywany): poziom został już wykorzystany i nie generuje kolejnego setupu, ale pozostaje chwilowo widoczny jako kontekst reakcji.
-- Sweep knotem i zamknięcie z powrotem tworzą setup SFP.
-- Potwierdzenie `SFP CONF SHORT/LONG` powstaje dopiero wtedy, gdy w ciągu 3 następnych świec close wybije przeciwne ekstremum świecy setupu. Wskaźnik zachowuje kolorową linię ostatniego potwierdzonego poziomu i alert, ale nie rysuje dużej etykiety zasłaniającej świece.
+- `SFP WATCH HIGH 1/2` (niebieski): potwierdzony swing high i aktualna pula płynności, na której **może** dopiero powstać bearish SFP. To nie jest sygnał.
+- `SFP WATCH LOW 1/2` (turkusowy): potwierdzony swing low i aktualna pula płynności, na której **może** dopiero powstać bullish SFP. To nie jest sygnał.
+- `WATCH HIGH/LOW — DOTKNIĘTY` (przygaszony, przerywany): poziom został już wykorzystany i nie generuje kolejnego setupu, ale pozostaje chwilowo widoczny jako kontekst reakcji.
+- `SFP RAW SHORT/LONG` (cienki, przerywany): knot zamiata WATCH, świeca zamyka się z powrotem za poziomem, a cały korpus pozostaje po właściwej stronie. RAW powstaje wyłącznie na zamkniętej świecy i pozostaje widoczny przez maksymalnie 12 świec. Można go osobno wyłączyć.
+- `SFP CONF SHORT/LONG` (gruby, ciągły): w ciągu 3 następnych świec close wybija przeciwne ekstremum świecy RAW. Wskaźnik zachowuje linię ostatniego potwierdzonego poziomu i mały tekst bez dużej chmurki zasłaniającej świece.
 
-Na otwartej świecy dotknięty poziom nie znika: od razu zmienia się w przerywany `DOTKNIĘTY`, a po zamknięciu świecy trafia do pamięci dotkniętych poziomów. Linia nie przewiduje pewnej reakcji. Pokazuje miejsce warte obserwacji; etykieta potwierdzonego sygnału powstaje dopiero na zamknięciu świecy i nie przemalowuje się intrabar.
+Na otwartej świecy dotknięty poziom nie znika: od razu zmienia się w przerywany `WATCH — DOTKNIĘTY`, a po zamknięciu świecy trafia do pamięci dotkniętych poziomów. Linia WATCH nie przewiduje pewnej reakcji. RAW oraz CONF powstają dopiero na zamkniętych świecach i nie przemalowują się intrabar.
 
-## Tryby dokładności
+## Domyślny filtr jakości
 
-- `Czuły`: lokalne swingi 3/3, reakcja minimum 0,6 ATR; więcej poziomów i szumu.
-- `Standard`: swingi 5/5, reakcja minimum 1 ATR; kompromis między liczbą poziomów a szumem.
-- `Selektywny`: swingi 10/10, reakcja minimum 1,25 ATR; mniej poziomów i mniej lokalnego szumu. Jest ustawieniem domyślnym po audycie.
-- `Własny`: ręcznie ustawiasz siłę swingu, minimalną reakcję oraz łączenie bliskich poziomów.
-
-Jeżeli wykres nadal jest zbyt pełny, ustaw `Poziomy nad ceną` i `Poziomy pod ceną` na `1` albo wybierz `Selektywny`. Jeżeli poziomów jest za mało, wybierz `Czuły` lub zwiększ `Maksymalna odległość od ceny (ATR)`.
+Wersja 5.4 działa stale w trybie selektywnym: swing 10/10, reakcja minimum 1,25 ATR, maksymalnie dwa poziomy WATCH nad ceną i dwa pod ceną. Parametry są celowo ukryte, żeby panel ustawień pozostał prosty i żeby przypadkowa zmiana nie rozluźniła definicji SFP.
 
 ## Potwierdzenie
 
-Bearish setup: high wybija aktywny swing high, ale zamknięcie wraca poniżej. Bullish setup: low wybija aktywny swing low, ale zamknięcie wraca powyżej. Domyślnie cały korpus musi zostać po właściwej stronie, sweep ma co najmniej 0,1 ATR i maksymalnie 1 ATR, a świeca ma zakres minimum 1,2 ATR. Po pierwszym dotknięciu pula płynności jest zużyta i nie może generować kolejnych setupów, ale domyślnie jej linia pozostaje widoczna jeszcze przez 12 świec. Znika wcześniej, gdy cena oddali się o ponad 5 ATR. Czas, odległość i liczbę takich linii można zmienić w sekcji `2. SFP — poziomy`.
+Bearish RAW: high wybija aktywny WATCH high knotem, ale open i close kończą poniżej poziomu. Bullish RAW: low wybija aktywny WATCH low knotem, ale open i close kończą powyżej poziomu. Sweep ma co najmniej 0,1 ATR i maksymalnie 1 ATR, a świeca ma zakres minimum 1,2 ATR. Po pierwszym dotknięciu pula płynności jest zużyta i nie może generować kolejnych setupów, ale jej przygaszona linia pozostaje widoczna jeszcze przez maksymalnie 12 świec lub do oddalenia ceny o ponad 5 ATR.
 
 W trybie `Break struktury` bearish CONF wymaga późniejszego close poniżej low świecy setupu, a bullish CONF close powyżej jej high. Setup wygasa po 3 świecach lub po wybiciu jego ekstremum z buforem 0,1 ATR. `Sam powrót świecy` przywraca luźną definicję v3, ale backtest nie wykazał dla niej samodzielnej przewagi.
 

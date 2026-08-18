@@ -1,16 +1,17 @@
-// [SK] SFP + FVG / IFVG v5.3
-// Radar aktualnych pul płynności, na których może powstać SFP.
+// [SK] SFP + FVG / IFVG v5.4
+// Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
-// Sweep i powrót tworzą setup. Domyślny sygnał CONF powstaje dopiero po późniejszym
+// Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
 // zamknięciu ceny poza przeciwnym ekstremum świecy SFP (break struktury).
 //
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.3", shorttitle = "SK SFP5.3", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30)
+indicator("[SK] SFP + FVG / IFVG v5.4", shorttitle = "SK SFP5.4", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30)
 
 // ==================== PROSTE USTAWIENIA ====================
 bool wlaczSfp = input.bool(true, "SFP — poziomy i potwierdzenia", group = "Włącz / wyłącz")
+bool pokazSfpRaw = input.bool(true, "SFP RAW — pokaż setup po sweepie", group = "Włącz / wyłącz", tooltip = "Cienka przerywana linia po prawidłowym sweepie knotem i zamknięciu całego korpusu z powrotem za poziomem. RAW nie jest jeszcze potwierdzeniem struktury.")
 bool wlaczFvg = input.bool(true, "FVG / IFVG — najbliższe strefy z 1H", group = "Włącz / wyłącz")
 bool wlaczDni = input.bool(true, "Dni tygodnia", group = "Włącz / wyłącz")
 bool wlaczAlerty = input.bool(false, "Alerty", group = "Włącz / wyłącz", tooltip = "Włącza alerty SFP oraz FVG/IFVG. W TradingView wybierz warunek: Dowolne wywołanie funkcji alert().")
@@ -45,6 +46,7 @@ int okresWolumenu = 20
 float mnoznikWolumenu = 1.20
 bool pokazOstatniSygnal = wlaczSfp
 int waznoscSygnalu = 72
+int waznoscRaw = 12
 bool pokazPanel = false
 color kolorShort = color.rgb(239, 83, 80)
 color kolorLong = color.rgb(38, 166, 154)
@@ -402,7 +404,7 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "DOTKNIĘTY HIGH  " : "SFP HIGH " + str.tostring(i + 1) + "  "
+                string tekst = dotknietyNaOtwartej ? "WATCH HIGH — DOTKNIĘTY  " : "SFP WATCH HIGH " + str.tostring(i + 1) + "  "
                 label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
@@ -415,7 +417,7 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "DOTKNIĘTY LOW  " : "SFP LOW " + str.tostring(i + 1) + "  "
+                string tekst = dotknietyNaOtwartej ? "WATCH LOW — DOTKNIĘTY  " : "SFP WATCH LOW " + str.tostring(i + 1) + "  "
                 label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
@@ -428,7 +430,7 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "DOTKNIĘTY HIGH  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "WATCH HIGH — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneHigh += 1
 
@@ -441,7 +443,7 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "DOTKNIĘTY LOW  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "WATCH LOW — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneLow += 1
 
@@ -644,8 +646,47 @@ plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek
 plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.saturday, title = "Sobota", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sobota", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
 plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.sunday, title = "Niedziela", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Niedziela", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
 
-// ==================== TYLKO OSTATNI POTWIERDZONY SFP ====================
+// ==================== TYLKO OSTATNI SFP RAW ====================
+// RAW powstaje dopiero na zamknięciu świecy, gdy knot zamiata potwierdzony
+// swing, a cały korpus wraca za poziom. To nadal setup oczekujący na CONF.
+var line ostatniaRawLinia = na
+var label ostatniaRawEtykieta = na
+var int ostatniRawBar = na
+var float ostatniRawPoziom = na
+var int ostatniRawKierunek = 0  // -1 = SHORT, 1 = LONG
+
+if bearishSetup or bullishSetup
+    if not na(ostatniaRawLinia)
+        line.delete(ostatniaRawLinia)
+        ostatniaRawLinia := na
+    if not na(ostatniaRawEtykieta)
+        label.delete(ostatniaRawEtykieta)
+        ostatniaRawEtykieta := na
+    bool rawShort = bearishSetup
+    float rawPoziom = rawShort ? bearishSetupPoziom : bullishSetupPoziom
+    int rawPivotBar = rawShort ? bearishSetupPivotBar : bullishSetupPivotBar
+    color rawKolor = rawShort ? kolorShort : kolorLong
+    if wlaczSfp and pokazSfpRaw
+        ostatniaRawLinia := line.new(rawPivotBar, rawPoziom, bar_index, rawPoziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(rawKolor, 28), style = line.style_dashed, width = 1, force_overlay = true)
+        ostatniaRawEtykieta := label.new(bar_index + 1, rawPoziom, rawShort ? "SFP RAW SHORT" : "SFP RAW LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = color.new(rawKolor, 8), size = size.tiny, force_overlay = true)
+    ostatniRawBar := bar_index
+    ostatniRawPoziom := rawPoziom
+    ostatniRawKierunek := rawShort ? -1 : 1
+
+if not na(ostatniRawBar) and bar_index - ostatniRawBar > waznoscRaw
+    if not na(ostatniaRawLinia)
+        line.delete(ostatniaRawLinia)
+        ostatniaRawLinia := na
+    if not na(ostatniaRawEtykieta)
+        label.delete(ostatniaRawEtykieta)
+        ostatniaRawEtykieta := na
+    ostatniRawBar := na
+    ostatniRawPoziom := na
+    ostatniRawKierunek := 0
+
+// ==================== TYLKO OSTATNI POTWIERDZONY SFP CONF ====================
 var line ostatniaLinia = na
+var label ostatniaEtykieta = na
 var int ostatniSygnalBar = na
 var string ostatniSygnal = "Brak"
 var float ostatniPoziom = na
@@ -653,12 +694,27 @@ var float ostatniPoziom = na
 if bearishSfp or bullishSfp
     if not na(ostatniaLinia)
         line.delete(ostatniaLinia)
+    if not na(ostatniaEtykieta)
+        label.delete(ostatniaEtykieta)
     bool shortSignal = bearishSfp
     float poziom = shortSignal ? bearishPoziom : bullishPoziom
     int pivotBar = shortSignal ? bearishPivotBar : bullishPivotBar
     color sygnalKolor = shortSignal ? kolorShort : kolorLong
+    int kierunekSygnalu = shortSignal ? -1 : 1
+    bool tenSamRaw = ostatniRawKierunek == kierunekSygnalu and not na(ostatniRawPoziom) and math.abs(ostatniRawPoziom - poziom) <= syminfo.mintick
+    if tenSamRaw
+        if not na(ostatniaRawLinia)
+            line.delete(ostatniaRawLinia)
+            ostatniaRawLinia := na
+        if not na(ostatniaRawEtykieta)
+            label.delete(ostatniaRawEtykieta)
+            ostatniaRawEtykieta := na
+        ostatniRawBar := na
+        ostatniRawPoziom := na
+        ostatniRawKierunek := 0
     if pokazOstatniSygnal
-        ostatniaLinia := line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.none, color = sygnalKolor, style = line.style_solid, width = 2, force_overlay = true)
+        ostatniaLinia := line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = sygnalKolor, style = line.style_solid, width = 3, force_overlay = true)
+        ostatniaEtykieta := label.new(bar_index + 1, poziom, shortSignal ? "SFP CONF SHORT" : "SFP CONF LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = sygnalKolor, size = size.tiny, force_overlay = true)
     ostatniSygnalBar := bar_index
     ostatniSygnal := shortSignal ? "Bearish / SHORT" : "Bullish / LONG"
     ostatniPoziom := poziom
@@ -667,6 +723,9 @@ if not na(ostatniSygnalBar) and bar_index - ostatniSygnalBar > waznoscSygnalu
     if not na(ostatniaLinia)
         line.delete(ostatniaLinia)
         ostatniaLinia := na
+    if not na(ostatniaEtykieta)
+        label.delete(ostatniaEtykieta)
+        ostatniaEtykieta := na
 
 // ==================== OPCJONALNY PANEL ====================
 f_cena(float wartosc) => na(wartosc) ? "—" : str.tostring(wartosc, format.mintick)
@@ -675,7 +734,7 @@ float pierwszyLow = array.size(wybraneLow) > 0 ? array.get(wybraneLow, 0) : na
 var table panel = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 20), frame_color = color.new(color.gray, 65), frame_width = 1, force_overlay = true)
 if barstate.islast
     if pokazPanel
-        table.cell(panel, 0, 0, "SK SFP + FVG v5.3", text_color = color.white)
+        table.cell(panel, 0, 0, "SK SFP + FVG v5.4", text_color = color.white)
         table.cell(panel, 1, 0, timeframe.period + " / " + tryb, text_color = color.white)
         table.cell(panel, 0, 1, "Najbliższy high", text_color = kolorHigh)
         table.cell(panel, 1, 1, f_cena(pierwszyHigh), text_color = color.white)
@@ -690,9 +749,9 @@ if barstate.islast
 bool dowolneNoweFvg = noweBullFvg or noweBearFvg
 bool dowolneNoweIfvg = noweBullIfvg or noweBearIfvg
 
-alertcondition(alertujDotknieciaSfp and dotkniecieShortAlert, title = "SFP — dotknięcie HIGH / obserwacja SHORT", message = "Dotknięcie SFP HIGH na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
-alertcondition(alertujDotknieciaSfp and dotkniecieLongAlert, title = "SFP — dotknięcie LOW / obserwacja LONG", message = "Dotknięcie SFP LOW na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
-alertcondition(alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert), title = "SFP — dowolne dotknięcie poziomu", message = "Dotknięcie poziomu SFP na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
+alertcondition(alertujDotknieciaSfp and dotkniecieShortAlert, title = "SFP WATCH — dotknięcie HIGH / obserwacja SHORT", message = "Dotknięcie SFP WATCH HIGH na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
+alertcondition(alertujDotknieciaSfp and dotkniecieLongAlert, title = "SFP WATCH — dotknięcie LOW / obserwacja LONG", message = "Dotknięcie SFP WATCH LOW na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
+alertcondition(alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert), title = "SFP WATCH — dowolne dotknięcie poziomu", message = "Dotknięcie poziomu SFP WATCH na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
 alertcondition(alertujPotwierdzeniaSfp and bearishSfp, title = "SFP — potwierdzony spadkowy / SHORT", message = "Potwierdzony spadkowy SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
 alertcondition(alertujPotwierdzeniaSfp and bullishSfp, title = "SFP — potwierdzony wzrostowy / LONG", message = "Potwierdzony wzrostowy SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
 alertcondition(alertujPotwierdzeniaSfp and (bearishSfp or bullishSfp), title = "SFP — dowolny potwierdzony sygnał", message = "Potwierdzony SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
