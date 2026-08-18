@@ -1,52 +1,39 @@
-# [SK] SFP + FVG / IFVG v5.4
+# SK SFP + FVG / IFVG v5.5 guide
 
-Ta wersja łączy bieżący radar SFP, najbliższe strefy FVG/IFVG z 1H i opisy dni tygodnia w jednym wskaźniku. Panel Inputs ma pięć prostych przełączników: `SFP`, `SFP RAW`, `FVG / IFVG 1H`, `Dni tygodnia` i `Alerty`. Ustawienia zaawansowane są celowo stałe, żeby nie zaśmiecać panelu.
+The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `WATCH → RAW → CONF`.
 
-## Co oznacza linia, a co sygnał
+## SFP hierarchy
 
-- `SFP WATCH HIGH 1/2` (niebieski): potwierdzony swing high i aktualna pula płynności, na której **może** dopiero powstać bearish SFP. To nie jest sygnał.
-- `SFP WATCH LOW 1/2` (turkusowy): potwierdzony swing low i aktualna pula płynności, na której **może** dopiero powstać bullish SFP. To nie jest sygnał.
-- `WATCH HIGH/LOW — DOTKNIĘTY` (przygaszony, przerywany): poziom został już wykorzystany i nie generuje kolejnego setupu, ale pozostaje chwilowo widoczny jako kontekst reakcji.
-- `SFP RAW SHORT/LONG` (cienki, przerywany): knot zamiata WATCH, świeca zamyka się z powrotem za poziomem, a cały korpus pozostaje po właściwej stronie. RAW powstaje wyłącznie na zamkniętej świecy i pozostaje widoczny przez maksymalnie 12 świec. Można go osobno wyłączyć.
-- `SFP CONF SHORT/LONG` (gruby, ciągły): w ciągu 3 następnych świec close wybija przeciwne ekstremum świecy RAW. Wskaźnik zachowuje linię ostatniego potwierdzonego poziomu i mały tekst bez dużej chmurki zasłaniającej świece.
+- `SFP WATCH HIGH/LOW`: a confirmed quality swing and an active liquidity pool. It is context, not a signal.
+- `WATCH — TOUCHED`: a consumed WATCH level retained briefly as reaction context.
+- `SFP RAW SHORT/LONG`: a wick sweeps the level and the full candle body closes back behind it. RAW is confirmed on candle close and can be disabled independently.
+- `SFP CONF SHORT/LONG`: within the next three candles, price closes beyond the opposite extreme of the RAW candle. This is the strongest state produced by the indicator, but it still requires trading context and risk management.
 
-Na otwartej świecy dotknięty poziom nie znika: od razu zmienia się w przerywany `WATCH — DOTKNIĘTY`, a po zamknięciu świecy trafia do pamięci dotkniętych poziomów. Linia WATCH nie przewiduje pewnej reakcji. RAW oraz CONF powstają dopiero na zamkniętych świecach i nie przemalowują się intrabar.
+The default selective quality filter uses a 10/10 swing, a minimum 1.25 ATR reaction, and at most two current WATCH levels on each side of price. A used liquidity pool cannot produce another setup.
 
-## Domyślny filtr jakości
+## FVG timeframe modes
 
-Wersja 5.4 działa stale w trybie selektywnym: swing 10/10, reakcja minimum 1,25 ATR, maksymalnie dwa poziomy WATCH nad ceną i dwa pod ceną. Parametry są celowo ukryte, żeby panel ustawień pozostał prosty i żeby przypadkowa zmiana nie rozluźniła definicji SFP.
+Open **Settings → Inputs → FVG timeframes**.
 
-## Potwierdzenie
+- `Match chart`: default. The source follows the chart. An H4 chart shows confirmed H4 zones, H1 shows H1, M15 shows M15, M30 shows M30, and D1 shows D1.
+- `Custom set`: enables up to three independent source books. Toggle each row and choose any supported TradingView timeframe. Duplicate timeframe selections are ignored.
+- `Nearest zones per side and timeframe`: shows one to three nearest active zones above and below price for every enabled source.
 
-Bearish RAW: high wybija aktywny WATCH high knotem, ale open i close kończą poniżej poziomu. Bullish RAW: low wybija aktywny WATCH low knotem, ale open i close kończą powyżej poziomu. Sweep ma co najmniej 0,1 ATR i maksymalnie 1 ATR, a świeca ma zakres minimum 1,2 ATR. Po pierwszym dotknięciu pula płynności jest zużyta i nie może generować kolejnych setupów, ale jej przygaszona linia pozostaje widoczna jeszcze przez maksymalnie 12 świec lub do oddalenia ceny o ponad 5 ATR.
+Every source is calculated only from its last closed candle. A classic bullish FVG forms when the third candle's low is above the first candle's high; bearish is the reverse. A full wick fill removes the FVG. A source-timeframe close through the opposite edge converts it to an IFVG.
 
-W trybie `Break struktury` bearish CONF wymaga późniejszego close poniżej low świecy setupu, a bullish CONF close powyżej jej high. Setup wygasa po 3 świecach lub po wybiciu jego ekstremum z buforem 0,1 ATR. `Sam powrót świecy` przywraca luźną definicję v3, ale backtest nie wykazał dla niej samodzielnej przewagi.
+## Alerts
 
-Wskaźnik przechowuje najwyżej jeden ostatni potwierdzony sygnał i domyślnie ukrywa go po 72 świecach. Panel stanu jest domyślnie wyłączony.
+Enable `Enable alert() events`, then create one TradingView alert with the condition **Any alert() function call**. Dynamic JSON events include:
 
-## FVG i IFVG 1H
+- `sfp_touch`
+- `sfp_confirmed`
+- `fvg_created`
+- `ifvg_created`
 
-- Wszystkie strefy są liczone z zamkniętych świec godzinowych, niezależnie od interwału otwartego wykresu.
-- Klasyczne wzrostowe FVG: minimum trzeciej świecy 1H jest powyżej maksimum pierwszej. Spadkowe działa odwrotnie.
-- Wskaźnik rysuje do trzech najbliższych aktywnych stref nad ceną i do trzech pod ceną, zamiast wyświetlać całą historię.
-- Granice boxu są dokładnie równe knotom pierwszej i trzeciej świecy klasycznego układu. Nie są liczone z korpusów, ATR ani przybliżonych poziomów.
-- Box jest żółty, bez obramowania, zaczyna się dokładnie na otwarciu trzeciej świecy tworzącej układ i kończy na prawej krawędzi aktualnej świecy. Z każdą świecą wydłuża się razem z rynkiem, ale nie wystaje w pustą przyszłość.
-- W środku boxu widnieje `FVG 1H` albo `IFVG 1H`.
-- Pełne wypełnienie knotem usuwa strefę. Zamknięcie godzinowe przez przeciwną krawędź zmienia FVG w IFVG; pełne wypełnienie aktywnego IFVG również je usuwa. Stare IFVG wygasają po 72 godzinach, żeby dawna inwersja nie tworzyła ogromnego, nieaktualnego boxu.
+The payload contains symbol, chart timeframe, event direction, price data, and source timeframe where relevant. It contains no credentials. Put the private HTTPS endpoint only in TradingView's Webhook URL field.
 
-## Dni tygodnia
+An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-Przełącznik `Dni tygodnia` dodaje na dole cienkie nazwy wszystkich siedmiu dni, wyśrodkowane pomiędzy dwiema kolejnymi północami, oraz krótkie półprzezroczyste separatory. Strefa `Europe/Warsaw` automatycznie uwzględnia zmianę czasu.
+## Limitations
 
-## Alerty i ograniczenia
-
-Jeden przełącznik `Alerty` obsługuje następujące zdarzenia:
-
-- `Dotknięcie SFP HIGH/LOW` — natychmiast przy pierwszym dotknięciu aktywnego poziomu; dynamiczna wiadomość ma format JSON przeznaczony dla webhooka Telegram.
-- `Potwierdzony bearish/bullish SFP` — dopiero po zamknięciu świecy zgodnie z wybranym potwierdzeniem.
-- `Nowa strefa FVG 1H` — po zamknięciu trzeciej świecy godzinowej tworzącej lukę.
-- `Nowa inwersja IFVG 1H` — po godzinowym zamknięciu przez przeciwną krawędź FVG.
-
-Dla dynamicznych wiadomości wybierz w TradingView warunek `Any alert() function call`. Alerty tworzenia stref i potwierdzenia SFP działają po zamknięciu, a alert dotknięcia SFP działa raz na świecę. Po aktualizacji kodu istniejący alert TradingView nadal używa starej kopii skryptu, dlatego trzeba go usunąć i utworzyć ponownie. Alerty tylko informują — nie składają zleceń.
-
-To wskaźnik, nie strategia. Nie składa zleceń i nie zna przyszłości. Backtest 371 820 świec OKX pokazał, że SFP bez dodatkowego kontekstu nie jest samodzielnie rentowną strategią po kosztach. Linie należy traktować jako radar płynności, a CONF jako bardziej rygorystyczne potwierdzenie struktury — nadal wymagające kontekstu HTF, sesji i zarządzania ryzykiem.
+WATCH is not a prediction, and CONF is not a complete strategy. The indicator never places orders. Historical testing of the SFP condition alone did not establish a standalone net-of-cost trading edge.
