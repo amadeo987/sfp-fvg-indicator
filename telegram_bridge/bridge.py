@@ -30,7 +30,6 @@ ALLOWED_EVENTS = {
     "sfp_confirmed",
     "fvg_created",
     "ifvg_created",
-    "divergence_confirmed",
 }
 
 

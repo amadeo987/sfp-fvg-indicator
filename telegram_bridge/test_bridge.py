@@ -35,15 +35,15 @@ class PayloadTests(unittest.TestCase):
     def test_message_contains_only_selected_fields(self):
         text = format_message(
             {
-                "event": "divergence_confirmed",
+                "event": "sfp_confirmed",
                 "symbol": "OKX:BTCUSD",
                 "timeframe": "240",
                 "direction": "bullish",
-                "kind": "regular",
+                "kind": "raw_to_confirmed",
                 "secret": "must-not-be-forwarded",
             }
         )
-        self.assertIn("DIVERGENCE CONFIRMED", text)
+        self.assertIn("SFP CONFIRMED", text)
         self.assertIn("bullish", text)
         self.assertNotIn("must-not-be-forwarded", text)
 

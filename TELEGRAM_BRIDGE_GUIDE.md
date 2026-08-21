@@ -54,6 +54,6 @@ Success requires all three checks: HTTP 202, a new Telegram message, and a `deli
 1. Enable `Enable alert() events` in the indicator.
 2. Create an alert using **Any alert() function call**.
 3. Enable Webhook URL and enter the private HTTPS URL ending in `/hooks/<WEBHOOK_SECRET>`.
-4. Create separate alerts for the main SFP/FVG indicator and WaveTrend divergence if both are required.
+4. Create one alert for the main SFP/FVG indicator.
 
 TradingView stores a snapshot of the script and inputs when an alert is created. Recreate it after changing code or settings. Delivery can occasionally fail, so inspect TradingView's webhook status and the server journal when a notification is missing.

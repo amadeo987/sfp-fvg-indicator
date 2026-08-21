@@ -3,11 +3,11 @@
 !README.md
 !LICENSE
 !SK_SFP_Najblizsze_Poziomy.pine
-!SK_WaveTrend_Divergence.pine
 !SK_Current_Day_POC_VAH_VAL.pine
+!SK_MTF_Nearest_Support_Resistance.pine
 !SFP_WSKAZNIK_INSTRUKCJA.md
-!DIVERGENCE_INDICATOR_GUIDE.md
 !CURRENT_DAY_PROFILE_GUIDE.md
+!SUPPORT_RESISTANCE_GUIDE.md
 !TELEGRAM_BRIDGE_GUIDE.md
 !telegram_bridge/
 !telegram_bridge/**

@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.5 guide
+# SK SFP + FVG / IFVG v5.6 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `WATCH → RAW → CONF`.
 
@@ -20,6 +20,10 @@ Open **Settings → Inputs → FVG timeframes**.
 - `Nearest zones per side and timeframe`: shows one to three nearest active zones above and below price for every enabled source.
 
 Every source is calculated only from its last closed candle. A classic bullish FVG forms when the third candle's low is above the first candle's high; bearish is the reverse. A full wick fill removes the FVG. A source-timeframe close through the opposite edge converts it to an IFVG.
+
+## Adaptive calendar markers
+
+With `Day / month separators` enabled, intraday charts keep Warsaw weekday labels and day separators. Daily, weekly, and monthly charts switch to abbreviated month labels. Monthly charts omit the repeated vertical separator so the bottom of the chart does not become a continuous white strip.
 
 ## Alerts
 

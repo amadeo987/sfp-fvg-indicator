@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.5
+// [SK] SFP + FVG / IFVG v5.6
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.5", shorttitle = "SK SFP5.5", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.6", shorttitle = "SK SFP5.6", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -15,7 +15,7 @@ string grupaFvg = "FVG timeframes"
 bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji)
 bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.")
 bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji)
-bool wlaczDni = input.bool(true, "Day separators", group = grupaFunkcji)
+bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.")
 bool wlaczAlerty = input.bool(true, "Enable alert() events", group = grupaFunkcji, tooltip = "Create one TradingView alert with the condition 'Any alert() function call'. Existing alerts must be recreated after a code or input change.")
 
 string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.")
@@ -503,13 +503,17 @@ f_update_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions
                     bool filled = (direction == 1 and sourceLow <= zoneBottom) or (direction == -1 and sourceHigh >= zoneTop)
                     if inversion
                         int newDirection = -direction
-                        array.set(directions, i, newDirection)
-                        array.set(inversions, i, true)
-                        array.set(inversionTimes, i, sourceTime)
-                        newBullIfvg := newBullIfvg or newDirection == 1
-                        newBearIfvg := newBearIfvg or newDirection == -1
-                        newIfvgTop := zoneTop
-                        newIfvgBottom := zoneBottom
+                        bool invertedFilled = (newDirection == 1 and sourceLow <= zoneBottom) or (newDirection == -1 and sourceHigh >= zoneTop)
+                        if invertedFilled
+                            removeZone := true
+                        else
+                            array.set(directions, i, newDirection)
+                            array.set(inversions, i, true)
+                            array.set(inversionTimes, i, sourceTime)
+                            newBullIfvg := newBullIfvg or newDirection == 1
+                            newBearIfvg := newBearIfvg or newDirection == -1
+                            newIfvgTop := zoneTop
+                            newIfvgBottom := zoneBottom
                     else if filled
                         removeZone := true
                 else if not removeZone
@@ -552,7 +556,7 @@ f_update_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions
 
     [newBullFvg, newBearFvg, newBullIfvg, newBearIfvg, newFvgTop, newFvgBottom, newIfvgTop, newIfvgBottom]
 
-f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, int[] startTimes, bool enabled, string tfLabel, box[] rendered) =>
+f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, int[] startTimes, bool enabled, string tfLabel, float liveHigh, float liveLow, box[] rendered) =>
     int[] selectedAbove = array.new_int()
     int[] selectedBelow = array.new_int()
     if enabled and array.size(tops) > 0
@@ -568,9 +572,10 @@ f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, 
                 float zoneBottom = array.get(bottoms, i)
                 int direction = array.get(directions, i)
                 int startTime = array.get(startTimes, i)
-                bool intersects = close >= zoneBottom and close <= zoneTop
-                bool above = zoneBottom > close or (intersects and direction == -1)
-                bool below = zoneTop < close or (intersects and direction == 1)
+                bool liveFilled = (direction == 1 and liveLow <= zoneBottom) or (direction == -1 and liveHigh >= zoneTop)
+                bool intersects = not liveFilled and close >= zoneBottom and close <= zoneTop
+                bool above = not liveFilled and (zoneBottom > close or (intersects and direction == -1))
+                bool below = not liveFilled and (zoneTop < close or (intersects and direction == 1))
                 float aboveDistance = above ? math.max(zoneBottom - close, 0.0) : 1e20
                 float belowDistance = below ? math.max(close - zoneTop, 0.0) : 1e20
                 bool betterAbove = aboveDistance < bestAboveDistance or (aboveDistance == bestAboveDistance and startTime > newestAbove)
@@ -612,6 +617,9 @@ bool useC = wlaczFvg and not matchChart and wlaczTfC and (not useA or tfC != tfA
 [sourceTimeA, sourceHighA, sourceLowA, sourceCloseA, firstHighA, firstLowA, sourceAtrA] = request.security(syminfo.tickerid, tfA, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
 [sourceTimeB, sourceHighB, sourceLowB, sourceCloseB, firstHighB, firstLowB, sourceAtrB] = request.security(syminfo.tickerid, tfB, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
 [sourceTimeC, sourceHighC, sourceLowC, sourceCloseC, firstHighC, firstLowC, sourceAtrC] = request.security(syminfo.tickerid, tfC, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+[liveHighA, liveLowA] = request.security(syminfo.tickerid, tfA, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+[liveHighB, liveLowB] = request.security(syminfo.tickerid, tfB, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+[liveHighC, liveLowC] = request.security(syminfo.tickerid, tfC, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
 int sourceMsA = int(timeframe.in_seconds(tfA) * 1000)
 int sourceMsB = int(timeframe.in_seconds(tfB) * 1000)
 int sourceMsC = int(timeframe.in_seconds(tfC) * 1000)
@@ -645,34 +653,55 @@ if barstate.islast
         for i = array.size(narysowaneStrefyFvg) - 1 to 0
             box.delete(array.get(narysowaneStrefyFvg, i))
     array.clear(narysowaneStrefyFvg)
-    f_draw_book(topsA, bottomsA, directionsA, inversionsA, startTimesA, useA, f_tf_label(tfA), narysowaneStrefyFvg)
-    f_draw_book(topsB, bottomsB, directionsB, inversionsB, startTimesB, useB, f_tf_label(tfB), narysowaneStrefyFvg)
-    f_draw_book(topsC, bottomsC, directionsC, inversionsC, startTimesC, useC, f_tf_label(tfC), narysowaneStrefyFvg)
+    f_draw_book(topsA, bottomsA, directionsA, inversionsA, startTimesA, useA, f_tf_label(tfA), liveHighA, liveLowA, narysowaneStrefyFvg)
+    f_draw_book(topsB, bottomsB, directionsB, inversionsB, startTimesB, useB, f_tf_label(tfB), liveHighB, liveLowB, narysowaneStrefyFvg)
+    f_draw_book(topsC, bottomsC, directionsC, inversionsC, startTimesC, useC, f_tf_label(tfC), liveHighC, liveLowC, narysowaneStrefyFvg)
 
-// ==================== DNI TYGODNIA (CZAS WARSZAWSKI) ====================
+// ==================== KALENDARZ (CZAS WARSZAWSKI) ====================
 int czasDniaWarszawa = time("D", "0000-2359:1234567", strefaCzasowaDni)
 int zmianaDniaWarszawa = ta.change(czasDniaWarszawa)
 bool poczatekDniaWarszawa = not na(czasDniaWarszawa) and zmianaDniaWarszawa != 0
 int dzienWarszawa = dayofweek(time, strefaCzasowaDni)
 int godzinaWarszawa = hour(time, strefaCzasowaDni)
 int godzinaPoprzedniejSwiecyWarszawa = hour(time[1], strefaCzasowaDni)
+int miesiacWarszawa = month(time, strefaCzasowaDni)
+int rokWarszawa = year(time, strefaCzasowaDni)
+int poprzedniMiesiacWarszawa = month(time[1], strefaCzasowaDni)
+int poprzedniRokWarszawa = year(time[1], strefaCzasowaDni)
+bool trybMiesiecy = timeframe.isdaily or timeframe.isweekly or timeframe.ismonthly
+bool poczatekMiesiacaWarszawa = na(time[1]) or miesiacWarszawa != poprzedniMiesiacWarszawa or rokWarszawa != poprzedniRokWarszawa
 // Nazwa trafia na pierwszą świecę po lokalnym południu, czyli w środek
 // odcinka wyznaczonego przez dwie kolejne północe. Działa także wtedy,
 // gdy wybrany interwał nie ma świecy otwieranej dokładnie o 12:00.
 bool srodekDniaWarszawa = not na(czasDniaWarszawa) and godzinaWarszawa >= 12 and (na(czasDniaWarszawa[1]) or czasDniaWarszawa != czasDniaWarszawa[1] or godzinaPoprzedniejSwiecyWarszawa < 12)
 
-// Cienki glif bez tła etykiety ma wysokość pojedynczej litery i leży na tej samej dolnej linii.
-plotchar(pokazDniTygodnia and pokazSeparatoryDni and poczatekDniaWarszawa, title = "Początek dnia", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
+// Intraday: dzień tygodnia. D/W/M: jeden znacznik miesiąca zamiast białego paska na każdej świecy.
+plotchar(pokazDniTygodnia and pokazSeparatoryDni and not trybMiesiecy and poczatekDniaWarszawa, title = "Początek dnia", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
+plotchar(pokazDniTygodnia and pokazSeparatoryDni and trybMiesiecy and not timeframe.ismonthly and poczatekMiesiacaWarszawa, title = "Początek miesiąca", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
 
 color tloNazwyDnia = color.new(kolorNazwDni, 100)
 color tekstNazwyDnia = color.new(kolorNazwDni, przezroczystoscDni)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.monday, title = "Poniedziałek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Poniedziałek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.tuesday, title = "Wtorek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wtorek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.wednesday, title = "Środa", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Środa", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.thursday, title = "Czwartek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Czwartek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.friday, title = "Piątek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Piątek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.saturday, title = "Sobota", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sobota", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.sunday, title = "Niedziela", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Niedziela", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.monday, title = "Poniedziałek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Poniedziałek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.tuesday, title = "Wtorek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wtorek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.wednesday, title = "Środa", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Środa", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.thursday, title = "Czwartek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Czwartek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.friday, title = "Piątek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Piątek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.saturday, title = "Sobota", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sobota", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.sunday, title = "Niedziela", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Niedziela", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+
+bool pokazNazweMiesiaca = pokazDniTygodnia and trybMiesiecy and poczatekMiesiacaWarszawa
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 1, title = "Styczeń", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sty", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 2, title = "Luty", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lut", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 3, title = "Marzec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Mar", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 4, title = "Kwiecień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Kwi", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 5, title = "Maj", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Maj", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 6, title = "Czerwiec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Cze", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 7, title = "Lipiec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lip", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 8, title = "Sierpień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sie", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 9, title = "Wrzesień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wrz", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 10, title = "Październik", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Paź", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 11, title = "Listopad", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lis", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 12, title = "Grudzień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Gru", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
 
 // ==================== TYLKO OSTATNI SFP RAW ====================
 // RAW powstaje dopiero na zamknięciu świecy, gdy knot zamiata potwierdzony
@@ -762,7 +791,7 @@ float pierwszyLow = array.size(wybraneLow) > 0 ? array.get(wybraneLow, 0) : na
 var table panel = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 20), frame_color = color.new(color.gray, 65), frame_width = 1, force_overlay = true)
 if barstate.islast
     if pokazPanel
-        table.cell(panel, 0, 0, "SK SFP + FVG v5.5", text_color = color.white)
+        table.cell(panel, 0, 0, "SK SFP + FVG v5.6", text_color = color.white)
         table.cell(panel, 1, 0, timeframe.period + " / " + tryb, text_color = color.white)
         table.cell(panel, 0, 1, "Najbliższy high", text_color = kolorHigh)
         table.cell(panel, 1, 1, f_cena(pierwszyHigh), text_color = color.white)
