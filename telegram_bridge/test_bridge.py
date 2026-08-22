@@ -24,6 +24,18 @@ class PayloadTests(unittest.TestCase):
         )
         self.assertEqual(payload["event"], "sfp_confirmed")
 
+    def test_accepts_sr_touch_event(self):
+        payload = validate_payload(
+            {
+                "event": "sr_touch",
+                "symbol": "Hyperliquid:HYPEUSDC.P",
+                "timeframe": "240",
+                "side": "SUPPORT",
+                "level": "42.50",
+            }
+        )
+        self.assertEqual(payload["event"], "sr_touch")
+
     def test_rejects_unknown_event(self):
         with self.assertRaises(ValueError):
             validate_payload({"event": "place_order", "symbol": "OKX:BTCUSD"})
@@ -46,6 +58,22 @@ class PayloadTests(unittest.TestCase):
         self.assertIn("SFP CONFIRMED", text)
         self.assertIn("bullish", text)
         self.assertNotIn("must-not-be-forwarded", text)
+
+    def test_sr_message_contains_level_details(self):
+        text = format_message(
+            {
+                "event": "sr_touch",
+                "symbol": "OKX:BTCUSDT.P",
+                "timeframe": "60",
+                "side": "RESISTANCE",
+                "level": "118500",
+                "price": "118470",
+                "distance_pct": "0.025",
+            }
+        )
+        self.assertIn("S/R TOUCH", text)
+        self.assertIn("RESISTANCE", text)
+        self.assertIn("118500", text)
 
 
 class ReceiverTests(unittest.TestCase):

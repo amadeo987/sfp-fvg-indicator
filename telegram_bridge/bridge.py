@@ -26,6 +26,7 @@ LOG = logging.getLogger("tv-telegram-bridge")
 MAX_BODY_BYTES = 64 * 1024
 MAX_QUEUE_SIZE = 200
 ALLOWED_EVENTS = {
+    "sr_touch",
     "sfp_touch",
     "sfp_confirmed",
     "fvg_created",
@@ -94,13 +95,17 @@ def validate_payload(payload: Any) -> dict[str, Any]:
 
 
 def format_message(payload: dict[str, Any]) -> str:
-    event = _field(payload, "event").replace("_", " ").upper()
+    event_name = _field(payload, "event")
+    event = "S/R TOUCH" if event_name == "sr_touch" else event_name.replace("_", " ").upper()
     symbol = _field(payload, "symbol")
     timeframe = _field(payload, "timeframe")
     source_timeframe = _field(payload, "source_timeframe", "")
     direction = _field(payload, "direction", "")
     kind = _field(payload, "kind", "")
     price = _field(payload, "price", "")
+    side = _field(payload, "side", "")
+    level = _field(payload, "level", "")
+    distance_pct = _field(payload, "distance_pct", "")
     lines = [f"{event}", f"{symbol} | chart {timeframe}"]
     if source_timeframe and source_timeframe != "-":
         lines.append(f"Source timeframe: {source_timeframe}")
@@ -108,8 +113,14 @@ def format_message(payload: dict[str, Any]) -> str:
         lines.append(f"Direction: {direction}")
     if kind and kind != "-":
         lines.append(f"Type: {kind}")
+    if side and side != "-":
+        lines.append(f"Level side: {side}")
+    if level and level != "-":
+        lines.append(f"Level: {level}")
     if price and price != "-":
         lines.append(f"Price: {price}")
+    if distance_pct and distance_pct != "-":
+        lines.append(f"Distance: {distance_pct}%")
     return "\n".join(lines)[:4096]
 
 

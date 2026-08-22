@@ -1,6 +1,6 @@
 # TradingView to Telegram bridge
 
-This receiver accepts the indicator's JSON alerts, acknowledges TradingView quickly with HTTP 202, and delivers the message to Telegram from a background queue. It has no order or exchange API capability.
+This receiver accepts the indicators' SFP/FVG and S/R-touch JSON alerts, acknowledges TradingView quickly with HTTP 202, and delivers the message to Telegram from a background queue. It has no order or exchange API capability.
 
 ## Security first
 

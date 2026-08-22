@@ -14,6 +14,7 @@ Three independent, open Pine Script v6 indicators for discretionary chart analys
 - a `Custom set` mode with any combination of three user-selected timeframes,
 - nearest-zone selection above and below price,
 - adaptive weekday/month markers and webhook-ready JSON alerts.
+- a chart-clean six-feed S/R Telegram scanner for BTC and ETH perpetuals on OKX plus HYPE perpetual on Hyperliquid, each on 1H and 4H.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
@@ -41,6 +42,8 @@ The main SFP/FVG indicator emits structured JSON through `alert()`. Create an al
 No bot token, chat ID, webhook secret, private hostname, or server address belongs in these public files. TradingView alerts are snapshots: recreate an alert after changing code or indicator inputs.
 
 The repository also contains a dependency-free, queue-backed receiver for forwarding those events to a Telegram bot. It binds to localhost by default and keeps every credential in a server-only environment file. See [`TELEGRAM_BRIDGE_GUIDE.md`](./TELEGRAM_BRIDGE_GUIDE.md).
+
+The standalone scanner is documented in [`SR_TELEGRAM_SCANNER_GUIDE.md`](./SR_TELEGRAM_SCANNER_GUIDE.md). It routes all six market/timeframe feeds through one TradingView `alert()` slot.
 
 ## Repainting policy
 
