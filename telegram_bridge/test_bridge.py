@@ -59,10 +59,11 @@ class PayloadTests(unittest.TestCase):
         self.assertIn("bullish", text)
         self.assertNotIn("must-not-be-forwarded", text)
 
-    def test_sr_message_contains_level_details(self):
+    def test_sr_message_is_short_and_uses_market_label(self):
         text = format_message(
             {
                 "event": "sr_touch",
+                "market": "BTC",
                 "symbol": "OKX:BTCUSDT.P",
                 "timeframe": "60",
                 "side": "RESISTANCE",
@@ -71,9 +72,19 @@ class PayloadTests(unittest.TestCase):
                 "distance_pct": "0.025",
             }
         )
-        self.assertIn("S/R TOUCH", text)
-        self.assertIn("RESISTANCE", text)
-        self.assertIn("118500", text)
+        self.assertEqual(text, "SFP DOTKNIĘTE — BTC 1H")
+        self.assertNotIn("RESISTANCE", text)
+        self.assertNotIn("118500", text)
+
+    def test_sr_message_falls_back_to_symbol(self):
+        text = format_message(
+            {
+                "event": "sr_touch",
+                "symbol": "Hyperliquid:HYPEUSDC.P",
+                "timeframe": "240",
+            }
+        )
+        self.assertEqual(text, "SFP DOTKNIĘTE — Hyperliquid:HYPEUSDC.P 4H")
 
 
 class ReceiverTests(unittest.TestCase):

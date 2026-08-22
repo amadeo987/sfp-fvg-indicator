@@ -1,4 +1,6 @@
-# SK S/R Telegram Scanner v1.1
+# Legacy SK S/R Telegram Scanner v1.1
+
+> Deprecated after main indicator v5.7. The scanner is now built into `SK_SFP_Najblizsze_Poziomy.pine`, covers eight markets on 1H/4H, and no longer needs a separate indicator slot. Keep this file only as a migration reference.
 
 This Pine v6 scanner monitors the nearest confirmed pivot support and resistance for:
 

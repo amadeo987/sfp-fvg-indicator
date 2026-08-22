@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.6
+// [SK] SFP + FVG / IFVG v5.7
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,25 +7,25 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.6", shorttitle = "SK SFP5.6", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.7", shorttitle = "SKSFP 5.7", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
 string grupaFvg = "FVG timeframes"
-bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji)
-bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.")
-bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji)
-bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.")
-bool wlaczAlerty = input.bool(true, "Enable alert() events", group = grupaFunkcji, tooltip = "Create one TradingView alert with the condition 'Any alert() function call'. Existing alerts must be recreated after a code or input change.")
+bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji, display = display.data_window)
+bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.", display = display.data_window)
+bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
+bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.", display = display.data_window)
+bool wlaczAlerty = input.bool(true, "Enable alert() events", group = grupaFunkcji, tooltip = "Create one TradingView alert with the condition 'Any alert() function call'. Existing alerts must be recreated after a code or input change.", display = display.data_window)
 
-string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.")
-bool wlaczTfA = input.bool(true, "Use", inline = "tfA", group = grupaFvg)
-string tfAInput = input.timeframe("60", "Timeframe 1", inline = "tfA", group = grupaFvg)
-bool wlaczTfB = input.bool(true, "Use", inline = "tfB", group = grupaFvg)
-string tfBInput = input.timeframe("240", "Timeframe 2", inline = "tfB", group = grupaFvg)
-bool wlaczTfC = input.bool(true, "Use", inline = "tfC", group = grupaFvg)
-string tfCInput = input.timeframe("1D", "Timeframe 3", inline = "tfC", group = grupaFvg)
-int ileFvgNaStrone = input.int(2, "Nearest zones per side and timeframe", minval = 1, maxval = 3, group = grupaFvg)
+string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.", display = display.data_window)
+bool wlaczTfA = input.bool(true, "Use", inline = "tfA", group = grupaFvg, display = display.data_window)
+string tfAInput = input.timeframe("60", "Timeframe 1", inline = "tfA", group = grupaFvg, display = display.data_window)
+bool wlaczTfB = input.bool(true, "Use", inline = "tfB", group = grupaFvg, display = display.data_window)
+string tfBInput = input.timeframe("240", "Timeframe 2", inline = "tfB", group = grupaFvg, display = display.data_window)
+bool wlaczTfC = input.bool(true, "Use", inline = "tfC", group = grupaFvg, display = display.data_window)
+string tfCInput = input.timeframe("1D", "Timeframe 3", inline = "tfC", group = grupaFvg, display = display.data_window)
+int ileFvgNaStrone = input.int(2, "Nearest zones per side and timeframe", minval = 1, maxval = 3, group = grupaFvg, display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -58,7 +58,6 @@ float mnoznikWolumenu = 1.20
 bool pokazOstatniSygnal = wlaczSfp
 int waznoscSygnalu = 72
 int waznoscRaw = 12
-bool pokazPanel = false
 color kolorShort = color.rgb(239, 83, 80)
 color kolorLong = color.rgb(38, 166, 154)
 
@@ -241,24 +240,28 @@ if barstate.isconfirmed and array.size(cenyLow) > 0
             array.remove(baryLow, i)
             array.remove(jakoscLow, i)
 
-// Dotknięty poziom jest już zużyty jako pula płynności, więc nie wraca do aktywnego
-// radaru. Pozostaje jednak na wykresie przez ustawioną liczbę świec albo do chwili,
-// gdy cena oddali się od niego o zbyt wiele ATR.
+// Po pierwszym naruszeniu poziom trafia do krótkiej pamięci. Drugi osobny retest
+// (cena musi najpierw wrócić na właściwą stronę) usuwa go natychmiast, żeby stara
+// pula płynności nie wisiała na wykresie po wielokrotnym przykryciu.
 float limitDotknietych = atr * usunDotknietyPoAtr
 if barstate.isconfirmed and array.size(dotknieteHigh) > 0
     for i = array.size(dotknieteHigh) - 1 to 0
+        float poziom = array.get(dotknieteHigh, i)
         bool zaStary = bar_index - array.get(dotknieteHighBar, i) > pamiecDotknietych
-        bool zaDaleko = math.abs(close - array.get(dotknieteHigh, i)) > limitDotknietych
-        if not pokazDotkniete or zaStary or zaDaleko
+        bool zaDaleko = math.abs(close - poziom) > limitDotknietych
+        bool drugiRetest = bar_index > array.get(dotknieteHighBar, i) and high >= poziom and high[1] < poziom
+        if not pokazDotkniete or zaStary or zaDaleko or drugiRetest
             array.remove(dotknieteHigh, i)
             array.remove(dotknieteHighPivotBar, i)
             array.remove(dotknieteHighBar, i)
 
 if barstate.isconfirmed and array.size(dotknieteLow) > 0
     for i = array.size(dotknieteLow) - 1 to 0
+        float poziom = array.get(dotknieteLow, i)
         bool zaStary = bar_index - array.get(dotknieteLowBar, i) > pamiecDotknietych
-        bool zaDaleko = math.abs(close - array.get(dotknieteLow, i)) > limitDotknietych
-        if not pokazDotkniete or zaStary or zaDaleko
+        bool zaDaleko = math.abs(close - poziom) > limitDotknietych
+        bool drugiRetest = bar_index > array.get(dotknieteLowBar, i) and low <= poziom and low[1] > poziom
+        if not pokazDotkniete or zaStary or zaDaleko or drugiRetest
             array.remove(dotknieteLow, i)
             array.remove(dotknieteLowPivotBar, i)
             array.remove(dotknieteLowBar, i)
@@ -784,23 +787,129 @@ if not na(ostatniSygnalBar) and bar_index - ostatniSygnalBar > waznoscSygnalu
         label.delete(ostatniaEtykieta)
         ostatniaEtykieta := na
 
-// ==================== OPCJONALNY PANEL ====================
-f_cena(float wartosc) => na(wartosc) ? "—" : str.tostring(wartosc, format.mintick)
-float pierwszyHigh = array.size(wybraneHigh) > 0 ? array.get(wybraneHigh, 0) : na
-float pierwszyLow = array.size(wybraneLow) > 0 ? array.get(wybraneLow, 0) : na
-var table panel = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 20), frame_color = color.new(color.gray, 65), frame_width = 1, force_overlay = true)
-if barstate.islast
-    if pokazPanel
-        table.cell(panel, 0, 0, "SK SFP + FVG v5.6", text_color = color.white)
-        table.cell(panel, 1, 0, timeframe.period + " / " + tryb, text_color = color.white)
-        table.cell(panel, 0, 1, "Najbliższy high", text_color = kolorHigh)
-        table.cell(panel, 1, 1, f_cena(pierwszyHigh), text_color = color.white)
-        table.cell(panel, 0, 2, "Najbliższy low", text_color = kolorLow)
-        table.cell(panel, 1, 2, f_cena(pierwszyLow), text_color = color.white)
-        table.cell(panel, 0, 3, "Ostatni sygnał", text_color = color.silver)
-        table.cell(panel, 1, 3, ostatniSygnal + " " + f_cena(ostatniPoziom), text_color = color.white)
-    else
-        table.clear(panel, 0, 0, 1, 3)
+// ==================== WBUDOWANY SKANER SFP — 8 RYNKÓW, 1H + 4H ====================
+// Stała lista nie zajmuje miejsca w legendzie. Skaner używa wyłącznie danych
+// rynkowych i alertów; nie składa zleceń ani nie modyfikuje pozostałych alertów.
+string skanerTf1 = "60"
+string skanerTf2 = "240"
+int skanerPivotLewy = 5
+int skanerPivotPrawy = 5
+int skanerPamiec = 6
+float skanerTolerancja = 0.05 / 100.0
+
+f_skan_najblizszy_opor(float reference, float p0, float p1, float p2, float p3, float p4, float p5) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to skanerPamiec - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate > reference and (na(nearest) or candidate < nearest)
+            nearest := candidate
+    nearest
+
+f_skan_najblizsze_wsparcie(float reference, float p0, float p1, float p2, float p3, float p4, float p5) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to skanerPamiec - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate < reference and (na(nearest) or candidate > nearest)
+            nearest := candidate
+    nearest
+
+f_skanuj_sfp() =>
+    float ph = ta.pivothigh(high, skanerPivotLewy, skanerPivotPrawy)
+    float pl = ta.pivotlow(low, skanerPivotLewy, skanerPivotPrawy)
+    float h0 = ta.valuewhen(not na(ph), ph, 0)[1]
+    float h1 = ta.valuewhen(not na(ph), ph, 1)[1]
+    float h2 = ta.valuewhen(not na(ph), ph, 2)[1]
+    float h3 = ta.valuewhen(not na(ph), ph, 3)[1]
+    float h4 = ta.valuewhen(not na(ph), ph, 4)[1]
+    float h5 = ta.valuewhen(not na(ph), ph, 5)[1]
+    float l0 = ta.valuewhen(not na(pl), pl, 0)[1]
+    float l1 = ta.valuewhen(not na(pl), pl, 1)[1]
+    float l2 = ta.valuewhen(not na(pl), pl, 2)[1]
+    float l3 = ta.valuewhen(not na(pl), pl, 3)[1]
+    float l4 = ta.valuewhen(not na(pl), pl, 4)[1]
+    float l5 = ta.valuewhen(not na(pl), pl, 5)[1]
+    float reference = close[1]
+    float resistance = f_skan_najblizszy_opor(reference, h0, h1, h2, h3, h4, h5)
+    float support = f_skan_najblizsze_wsparcie(reference, l0, l1, l2, l3, l4, l5)
+    bool touchingResistance = not na(resistance) and high >= resistance * (1.0 - skanerTolerancja) and low <= resistance * (1.0 + skanerTolerancja)
+    bool touchingSupport = not na(support) and high >= support * (1.0 - skanerTolerancja) and low <= support * (1.0 + skanerTolerancja)
+    [time, resistance, support, touchingResistance and not touchingResistance[1], touchingSupport and not touchingSupport[1]]
+
+string skanerBtc = "OKX:BTCUSDT.P"
+string skanerEth = "OKX:ETHUSDT.P"
+string skanerSol = "OKX:SOLUSDT.P"
+string skanerHype = "Hyperliquid:HYPEUSDC.P"
+string skanerXrp = "OKX:XRPUSDT.P"
+string skanerLink = "OKX:LINKUSDT.P"
+string skanerGold = "COMEX:GC1!"
+string skanerSilver = "COMEX:SI1!"
+
+[btc1Time, btc1R, btc1S, btc1TouchR, btc1TouchS] = request.security(skanerBtc, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[btc4Time, btc4R, btc4S, btc4TouchR, btc4TouchS] = request.security(skanerBtc, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[eth1Time, eth1R, eth1S, eth1TouchR, eth1TouchS] = request.security(skanerEth, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[eth4Time, eth4R, eth4S, eth4TouchR, eth4TouchS] = request.security(skanerEth, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[sol1Time, sol1R, sol1S, sol1TouchR, sol1TouchS] = request.security(skanerSol, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[sol4Time, sol4R, sol4S, sol4TouchR, sol4TouchS] = request.security(skanerSol, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[hype1Time, hype1R, hype1S, hype1TouchR, hype1TouchS] = request.security(skanerHype, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[hype4Time, hype4R, hype4S, hype4TouchR, hype4TouchS] = request.security(skanerHype, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[xrp1Time, xrp1R, xrp1S, xrp1TouchR, xrp1TouchS] = request.security(skanerXrp, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[xrp4Time, xrp4R, xrp4S, xrp4TouchR, xrp4TouchS] = request.security(skanerXrp, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[link1Time, link1R, link1S, link1TouchR, link1TouchS] = request.security(skanerLink, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[link4Time, link4R, link4S, link4TouchR, link4TouchS] = request.security(skanerLink, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[gold1Time, gold1R, gold1S, gold1TouchR, gold1TouchS] = request.security(skanerGold, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[gold4Time, gold4R, gold4S, gold4TouchR, gold4TouchS] = request.security(skanerGold, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[silver1Time, silver1R, silver1S, silver1TouchR, silver1TouchS] = request.security(skanerSilver, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[silver4Time, silver4R, silver4S, silver4TouchR, silver4TouchS] = request.security(skanerSilver, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+
+var int[] skanerOstatniCzas = array.new_int(32, na)
+var float[] skanerOstatniPoziom = array.new_float(32, na)
+
+f_skan_swiezy(int slot, bool touched, int sourceTime, float level) =>
+    int previousTime = array.get(skanerOstatniCzas, slot)
+    float previousLevel = array.get(skanerOstatniPoziom, slot)
+    bool fresh = wlaczAlerty and touched and not na(sourceTime) and not na(level) and (sourceTime != previousTime or level != previousLevel)
+    if fresh
+        array.set(skanerOstatniCzas, slot, sourceTime)
+        array.set(skanerOstatniPoziom, slot, level)
+    fresh
+
+f_skan_payload(string market, string tf, int sourceTime) =>
+    "{\"event\":\"sr_touch\",\"market\":\"" + market + "\",\"symbol\":\"" + market + "\",\"timeframe\":\"" + tf + "\",\"bar_time\":\"" + str.tostring(sourceTime) + "\"}"
+
+if f_skan_swiezy(0, btc1TouchR, btc1Time, btc1R) or f_skan_swiezy(1, btc1TouchS, btc1Time, btc1S)
+    alert(f_skan_payload("BTC", skanerTf1, btc1Time), alert.freq_all)
+if f_skan_swiezy(2, btc4TouchR, btc4Time, btc4R) or f_skan_swiezy(3, btc4TouchS, btc4Time, btc4S)
+    alert(f_skan_payload("BTC", skanerTf2, btc4Time), alert.freq_all)
+if f_skan_swiezy(4, eth1TouchR, eth1Time, eth1R) or f_skan_swiezy(5, eth1TouchS, eth1Time, eth1S)
+    alert(f_skan_payload("ETH", skanerTf1, eth1Time), alert.freq_all)
+if f_skan_swiezy(6, eth4TouchR, eth4Time, eth4R) or f_skan_swiezy(7, eth4TouchS, eth4Time, eth4S)
+    alert(f_skan_payload("ETH", skanerTf2, eth4Time), alert.freq_all)
+if f_skan_swiezy(8, sol1TouchR, sol1Time, sol1R) or f_skan_swiezy(9, sol1TouchS, sol1Time, sol1S)
+    alert(f_skan_payload("SOL", skanerTf1, sol1Time), alert.freq_all)
+if f_skan_swiezy(10, sol4TouchR, sol4Time, sol4R) or f_skan_swiezy(11, sol4TouchS, sol4Time, sol4S)
+    alert(f_skan_payload("SOL", skanerTf2, sol4Time), alert.freq_all)
+if f_skan_swiezy(12, hype1TouchR, hype1Time, hype1R) or f_skan_swiezy(13, hype1TouchS, hype1Time, hype1S)
+    alert(f_skan_payload("HYPE", skanerTf1, hype1Time), alert.freq_all)
+if f_skan_swiezy(14, hype4TouchR, hype4Time, hype4R) or f_skan_swiezy(15, hype4TouchS, hype4Time, hype4S)
+    alert(f_skan_payload("HYPE", skanerTf2, hype4Time), alert.freq_all)
+if f_skan_swiezy(16, xrp1TouchR, xrp1Time, xrp1R) or f_skan_swiezy(17, xrp1TouchS, xrp1Time, xrp1S)
+    alert(f_skan_payload("XRP", skanerTf1, xrp1Time), alert.freq_all)
+if f_skan_swiezy(18, xrp4TouchR, xrp4Time, xrp4R) or f_skan_swiezy(19, xrp4TouchS, xrp4Time, xrp4S)
+    alert(f_skan_payload("XRP", skanerTf2, xrp4Time), alert.freq_all)
+if f_skan_swiezy(20, link1TouchR, link1Time, link1R) or f_skan_swiezy(21, link1TouchS, link1Time, link1S)
+    alert(f_skan_payload("LINK", skanerTf1, link1Time), alert.freq_all)
+if f_skan_swiezy(22, link4TouchR, link4Time, link4R) or f_skan_swiezy(23, link4TouchS, link4Time, link4S)
+    alert(f_skan_payload("LINK", skanerTf2, link4Time), alert.freq_all)
+if f_skan_swiezy(24, gold1TouchR, gold1Time, gold1R) or f_skan_swiezy(25, gold1TouchS, gold1Time, gold1S)
+    alert(f_skan_payload("GOLD", skanerTf1, gold1Time), alert.freq_all)
+if f_skan_swiezy(26, gold4TouchR, gold4Time, gold4R) or f_skan_swiezy(27, gold4TouchS, gold4Time, gold4S)
+    alert(f_skan_payload("GOLD", skanerTf2, gold4Time), alert.freq_all)
+if f_skan_swiezy(28, silver1TouchR, silver1Time, silver1R) or f_skan_swiezy(29, silver1TouchS, silver1Time, silver1S)
+    alert(f_skan_payload("SILVER", skanerTf1, silver1Time), alert.freq_all)
+if f_skan_swiezy(30, silver4TouchR, silver4Time, silver4R) or f_skan_swiezy(31, silver4TouchS, silver4Time, silver4S)
+    alert(f_skan_payload("SILVER", skanerTf2, silver4Time), alert.freq_all)
 
 // ==================== ALERTY ====================
 bool dowolneNoweFvg = newBullFvgA or newBearFvgA or newBullFvgB or newBearFvgB or newBullFvgC or newBearFvgC

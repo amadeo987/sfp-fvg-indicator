@@ -1,11 +1,11 @@
-# SK SFP + FVG / IFVG v5.6 guide
+# SK SFP + FVG / IFVG v5.7 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `WATCH → RAW → CONF`.
 
 ## SFP hierarchy
 
 - `SFP WATCH HIGH/LOW`: a confirmed quality swing and an active liquidity pool. It is context, not a signal.
-- `WATCH — TOUCHED`: a consumed WATCH level retained briefly as reaction context.
+- `WATCH — TOUCHED`: a consumed WATCH level retained briefly as reaction context. It disappears immediately after a second separate retest; one continuous overlap is not counted twice.
 - `SFP RAW SHORT/LONG`: a wick sweeps the level and the full candle body closes back behind it. RAW is confirmed on candle close and can be disabled independently.
 - `SFP CONF SHORT/LONG`: within the next three candles, price closes beyond the opposite extreme of the RAW candle. This is the strongest state produced by the indicator, but it still requires trading context and risk management.
 
@@ -29,6 +29,7 @@ With `Day / month separators` enabled, intraday charts keep Warsaw weekday label
 
 Enable `Enable alert() events`, then create one TradingView alert with the condition **Any alert() function call**. Dynamic JSON events include:
 
+- `sr_touch` from the integrated 1H/4H scanner
 - `sfp_touch`
 - `sfp_confirmed`
 - `fvg_created`
@@ -36,7 +37,11 @@ Enable `Enable alert() events`, then create one TradingView alert with the condi
 
 The payload contains symbol, chart timeframe, event direction, price data, and source timeframe where relevant. It contains no credentials. Put the private HTTPS endpoint only in TradingView's Webhook URL field.
 
+The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYPE perpetual on Hyperliquid, and COMEX gold/silver continuous futures. Telegram formats these scanner events as one short line such as `SFP DOTKNIĘTE — BTC 1H`. Run the alert on a 1H or lower chart so 1H intrabar touches are not skipped.
+
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
+
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.7` script.
 
 ## Limitations
 

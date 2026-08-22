@@ -96,7 +96,12 @@ def validate_payload(payload: Any) -> dict[str, Any]:
 
 def format_message(payload: dict[str, Any]) -> str:
     event_name = _field(payload, "event")
-    event = "S/R TOUCH" if event_name == "sr_touch" else event_name.replace("_", " ").upper()
+    if event_name == "sr_touch":
+        market = _field(payload, "market", _field(payload, "symbol"))
+        timeframe = _field(payload, "timeframe")
+        short_timeframe = {"60": "1H", "240": "4H"}.get(timeframe, timeframe)
+        return f"SFP DOTKNIĘTE — {market} {short_timeframe}"[:4096]
+    event = event_name.replace("_", " ").upper()
     symbol = _field(payload, "symbol")
     timeframe = _field(payload, "timeframe")
     source_timeframe = _field(payload, "source_timeframe", "")

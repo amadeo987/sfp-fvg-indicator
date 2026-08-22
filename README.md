@@ -1,10 +1,10 @@
 # SK TradingView Indicators
 
-Three independent, open Pine Script v6 indicators for discretionary chart analysis. They do not place orders and do not require exchange API keys.
+Open Pine Script v6 indicators for discretionary chart analysis. They do not place orders and do not require exchange API keys.
 
 ## Included scripts
 
-### SK SFP + FVG / IFVG v5.6
+### SK SFP + FVG / IFVG v5.7
 
 [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
@@ -13,8 +13,10 @@ Three independent, open Pine Script v6 indicators for discretionary chart analys
 - a default `Match chart` timeframe mode,
 - a `Custom set` mode with any combination of three user-selected timeframes,
 - nearest-zone selection above and below price,
-- adaptive weekday/month markers and webhook-ready JSON alerts.
-- a chart-clean six-feed S/R Telegram scanner for BTC and ETH perpetuals on OKX plus HYPE perpetual on Hyperliquid, each on 1H and 4H.
+- adaptive weekday/month markers and webhook-ready JSON alerts,
+- an integrated, chart-clean 1H/4H scanner for BTC, ETH, SOL, XRP and LINK on OKX, HYPE on Hyperliquid, plus COMEX gold and silver continuous futures,
+- automatic removal of consumed WATCH context after its second separate retest,
+- a short `SKSFP 5.7` status-line name with no scanner table.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
@@ -43,7 +45,7 @@ No bot token, chat ID, webhook secret, private hostname, or server address belon
 
 The repository also contains a dependency-free, queue-backed receiver for forwarding those events to a Telegram bot. It binds to localhost by default and keeps every credential in a server-only environment file. See [`TELEGRAM_BRIDGE_GUIDE.md`](./TELEGRAM_BRIDGE_GUIDE.md).
 
-The standalone scanner is documented in [`SR_TELEGRAM_SCANNER_GUIDE.md`](./SR_TELEGRAM_SCANNER_GUIDE.md). It routes all six market/timeframe feeds through one TradingView `alert()` slot.
+The scanner is integrated into the main SFP/FVG script, so one TradingView indicator slot and one **Any alert() function call** alert handle the chart logic and all 16 market/timeframe feeds. The former standalone scanner remains documented only as a legacy migration reference in [`SR_TELEGRAM_SCANNER_GUIDE.md`](./SR_TELEGRAM_SCANNER_GUIDE.md).
 
 ## Repainting policy
 
@@ -55,7 +57,7 @@ The standalone scanner is documented in [`SR_TELEGRAM_SCANNER_GUIDE.md`](./SR_TE
 ## Status
 
 - Pine language: **v6**
-- Main indicator: **v5.6**
+- Main indicator: **v5.7**
 - Current-day profile: **v1.0**
 - MTF support/resistance: **v1.0**
 
