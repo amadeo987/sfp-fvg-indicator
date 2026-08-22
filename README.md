@@ -4,7 +4,7 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 
 ## Included scripts
 
-### SK SFP + FVG / IFVG v5.7
+### SK SFP + FVG / IFVG v5.8
 
 [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
@@ -13,10 +13,10 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 - a default `Match chart` timeframe mode,
 - a `Custom set` mode with any combination of three user-selected timeframes,
 - nearest-zone selection above and below price,
-- adaptive weekday/month markers and webhook-ready JSON alerts,
+- adaptive weekday/month markers,
 - an integrated, chart-clean 1H/4H scanner for BTC, ETH, SOL, XRP and LINK on OKX, HYPE on Hyperliquid, plus COMEX gold and silver continuous futures,
 - automatic removal of consumed WATCH context after its second separate retest,
-- a short `SKSFP 5.7` status-line name with no scanner table.
+- a short `SKSFP 5.8` status-line name with no scanner table.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
@@ -39,7 +39,7 @@ The profile is an approximation based on chart-bar volume distributed across con
 
 ## Alerts and Telegram webhooks
 
-The main SFP/FVG indicator emits structured JSON through `alert()`. Create an alert using **Any alert() function call** and paste your private HTTPS webhook URL into TradingView's Webhook URL field.
+The main indicator emits only `sr_touch` JSON from its fixed SFP scanner. It never sends FVG, IFVG, chart-only WATCH, RAW, or CONF notifications. Create one alert using **Any alert() function call** and paste your private HTTPS webhook URL into TradingView's Webhook URL field.
 
 No bot token, chat ID, webhook secret, private hostname, or server address belongs in these public files. TradingView alerts are snapshots: recreate an alert after changing code or indicator inputs.
 
@@ -57,7 +57,7 @@ The scanner is integrated into the main SFP/FVG script, so one TradingView indic
 ## Status
 
 - Pine language: **v6**
-- Main indicator: **v5.7**
+- Main indicator: **v5.8**
 - Current-day profile: **v1.0**
 - MTF support/resistance: **v1.0**
 

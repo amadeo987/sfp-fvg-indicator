@@ -18,12 +18,6 @@ class PayloadTests(unittest.TestCase):
         self.assertEqual(text, "HTTP 401")
         self.assertNotIn("secret", text)
 
-    def test_accepts_known_event(self):
-        payload = validate_payload(
-            {"event": "sfp_confirmed", "symbol": "OKX:BTCUSD", "timeframe": "60", "direction": "short"}
-        )
-        self.assertEqual(payload["event"], "sfp_confirmed")
-
     def test_accepts_sr_touch_event(self):
         payload = validate_payload(
             {
@@ -40,24 +34,18 @@ class PayloadTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_payload({"event": "place_order", "symbol": "OKX:BTCUSD"})
 
+    def test_rejects_fvg_and_other_indicator_events(self):
+        for event in ("fvg_created", "ifvg_created", "sfp_touch", "sfp_confirmed"):
+            with self.subTest(event=event), self.assertRaises(ValueError):
+                validate_payload({"event": event, "symbol": "OKX:BTCUSD"})
+
     def test_rejects_non_object(self):
         with self.assertRaises(ValueError):
             validate_payload(["sfp_confirmed"])
 
-    def test_message_contains_only_selected_fields(self):
-        text = format_message(
-            {
-                "event": "sfp_confirmed",
-                "symbol": "OKX:BTCUSD",
-                "timeframe": "240",
-                "direction": "bullish",
-                "kind": "raw_to_confirmed",
-                "secret": "must-not-be-forwarded",
-            }
-        )
-        self.assertIn("SFP CONFIRMED", text)
-        self.assertIn("bullish", text)
-        self.assertNotIn("must-not-be-forwarded", text)
+    def test_formatter_rejects_non_scanner_events(self):
+        with self.assertRaises(ValueError):
+            format_message({"event": "fvg_created", "symbol": "OKX:BTCUSD", "timeframe": "60"})
 
     def test_sr_message_is_short_and_uses_market_label(self):
         text = format_message(
@@ -109,7 +97,7 @@ class ReceiverTests(unittest.TestCase):
         self.assertTrue(json.loads(response.read())["ok"])
 
     def test_valid_secret_and_payload_are_queued(self):
-        body = json.dumps({"event": "sfp_touch", "symbol": "OKX:BTCUSD", "timeframe": "60"})
+        body = json.dumps({"event": "sr_touch", "market": "BTC", "symbol": "OKX:BTCUSDT.P", "timeframe": "60"})
         self.connection.request(
             "POST",
             f"/hooks/{self.secret}",
@@ -120,6 +108,19 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(response.status, 202)
         response.read()
         self.assertEqual(self.server.outbox.qsize(), 1)
+
+    def test_fvg_event_is_rejected_and_not_queued(self):
+        body = json.dumps({"event": "fvg_created", "symbol": "OKX:BTCUSD", "timeframe": "60"})
+        self.connection.request(
+            "POST",
+            f"/hooks/{self.secret}",
+            body=body,
+            headers={"Content-Type": "application/json"},
+        )
+        response = self.connection.getresponse()
+        self.assertEqual(response.status, 400)
+        response.read()
+        self.assertEqual(self.server.outbox.qsize(), 0)
 
     def test_wrong_secret_is_not_distinguishable_from_missing_path(self):
         body = json.dumps({"event": "sfp_touch", "symbol": "OKX:BTCUSD"})

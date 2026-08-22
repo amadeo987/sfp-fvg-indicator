@@ -1,6 +1,6 @@
 # TradingView to Telegram bridge
 
-This receiver accepts the indicators' SFP/FVG and S/R-touch JSON alerts, acknowledges TradingView quickly with HTTP 202, and delivers the message to Telegram from a background queue. It has no order or exchange API capability.
+This receiver accepts only the integrated scanner's `sr_touch` JSON alerts, acknowledges them quickly with HTTP 202, and delivers short SFP notifications to Telegram from a background queue. FVG, IFVG and every other event type are rejected. It has no order or exchange API capability.
 
 ## Security first
 
@@ -43,7 +43,7 @@ From outside the server, POST a harmless supported event to the final HTTPS URL:
 ```bash
 curl --fail-with-body \
   -H 'Content-Type: application/json' \
-  --data '{"event":"sfp_confirmed","symbol":"TEST:TEST","timeframe":"60","direction":"long","price":1}' \
+  --data '{"event":"sr_touch","market":"TEST","symbol":"TEST:TEST","timeframe":"60"}' \
   'https://your-private-host.example/hooks/your-long-random-secret'
 ```
 
@@ -51,7 +51,7 @@ Success requires all three checks: HTTP 202, a new Telegram message, and a `deli
 
 ## TradingView alert
 
-1. Enable `Enable alert() events` in the indicator.
+1. Enable `SFP scanner alerts only` in the indicator.
 2. Create an alert using **Any alert() function call**.
 3. Enable Webhook URL and enter the private HTTPS URL ending in `/hooks/<WEBHOOK_SECRET>`.
 4. Create one alert for the main SFP/FVG indicator.

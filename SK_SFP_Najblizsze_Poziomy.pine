@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.7
+// [SK] SFP + FVG / IFVG v5.8
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.7", shorttitle = "SKSFP 5.7", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.8", shorttitle = "SKSFP 5.8", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -16,7 +16,7 @@ bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFu
 bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.", display = display.data_window)
 bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
 bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.", display = display.data_window)
-bool wlaczAlerty = input.bool(true, "Enable alert() events", group = grupaFunkcji, tooltip = "Create one TradingView alert with the condition 'Any alert() function call'. Existing alerts must be recreated after a code or input change.", display = display.data_window)
+bool wlaczAlerty = input.bool(true, "SFP scanner alerts only", group = grupaFunkcji, tooltip = "The single Any alert() function call alert sends only short SFP level-touch notifications for the fixed 1H/4H market list. FVG, IFVG and chart-only events are never sent.", display = display.data_window)
 
 string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.", display = display.data_window)
 bool wlaczTfA = input.bool(true, "Use", inline = "tfA", group = grupaFvg, display = display.data_window)
@@ -74,11 +74,6 @@ int przezroczystoscDni = 45
 int przezroczystoscSeparatorow = 55
 color kolorNazwDni = color.silver
 color kolorSeparatorow = color.white
-
-bool alertujDotknieciaSfp = wlaczAlerty and wlaczSfp
-bool alertujPotwierdzeniaSfp = wlaczAlerty and wlaczSfp
-bool alertujNoweFvg = wlaczAlerty and wlaczFvg
-bool alertujNoweIfvg = wlaczAlerty and wlaczFvg
 
 // ==================== PAMIĘĆ JAKOŚCIOWYCH SWINGÓW ====================
 var float[] cenyHigh = array.new_float()
@@ -910,49 +905,3 @@ if f_skan_swiezy(28, silver1TouchR, silver1Time, silver1R) or f_skan_swiezy(29, 
     alert(f_skan_payload("SILVER", skanerTf1, silver1Time), alert.freq_all)
 if f_skan_swiezy(30, silver4TouchR, silver4Time, silver4R) or f_skan_swiezy(31, silver4TouchS, silver4Time, silver4S)
     alert(f_skan_payload("SILVER", skanerTf2, silver4Time), alert.freq_all)
-
-// ==================== ALERTY ====================
-bool dowolneNoweFvg = newBullFvgA or newBearFvgA or newBullFvgB or newBearFvgB or newBullFvgC or newBearFvgC
-bool dowolneNoweIfvg = newBullIfvgA or newBearIfvgA or newBullIfvgB or newBearIfvgB or newBullIfvgC or newBearIfvgC
-
-f_zone_payload(string eventName, bool bullish, string sourceTf, float zoneTop, float zoneBottom) =>
-    "{\"event\":\"" + eventName + "\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"source_timeframe\":\"" + sourceTf + "\",\"direction\":\"" + (bullish ? "bullish" : "bearish") + "\",\"zone_top\":\"" + str.tostring(zoneTop, format.mintick) + "\",\"zone_bottom\":\"" + str.tostring(zoneBottom, format.mintick) + "\",\"price\":\"" + str.tostring(close, format.mintick) + "\",\"bar_time\":\"" + str.tostring(time) + "\"}"
-
-alertcondition(alertujDotknieciaSfp and dotkniecieShortAlert, title = "SFP WATCH high touched / short watch", message = "SFP WATCH high touched on {{exchange}}:{{ticker}} | TF {{interval}} | price {{close}}")
-alertcondition(alertujDotknieciaSfp and dotkniecieLongAlert, title = "SFP WATCH low touched / long watch", message = "SFP WATCH low touched on {{exchange}}:{{ticker}} | TF {{interval}} | price {{close}}")
-alertcondition(alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert), title = "Any SFP WATCH level touched", message = "SFP WATCH level touched on {{exchange}}:{{ticker}} | TF {{interval}} | price {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and bearishSfp, title = "Confirmed bearish SFP / short", message = "Confirmed bearish SFP on {{exchange}}:{{ticker}} | TF {{interval}} | close {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and bullishSfp, title = "Confirmed bullish SFP / long", message = "Confirmed bullish SFP on {{exchange}}:{{ticker}} | TF {{interval}} | close {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and (bearishSfp or bullishSfp), title = "Any confirmed SFP", message = "Confirmed SFP on {{exchange}}:{{ticker}} | TF {{interval}} | close {{close}}")
-alertcondition(alertujNoweFvg and dowolneNoweFvg, title = "New confirmed FVG", message = "New confirmed FVG on {{exchange}}:{{ticker}} | chart TF {{interval}} | price {{close}}")
-alertcondition(alertujNoweIfvg and dowolneNoweIfvg, title = "New confirmed IFVG", message = "New confirmed IFVG on {{exchange}}:{{ticker}} | chart TF {{interval}} | price {{close}}")
-
-if alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert)
-    bool shortRadar = dotkniecieShortAlert
-    float poziomAlertu = shortRadar ? dotkniecieHighPoziom : dotkniecieLowPoziom
-    string stronaAlertu = shortRadar ? "HIGH" : "LOW"
-    string kierunekAlertu = shortRadar ? "SHORT" : "LONG"
-    string payload = "{\"event\":\"sfp_touch\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"side\":\"" + stronaAlertu + "\",\"bias\":\"" + kierunekAlertu + "\",\"level\":\"" + str.tostring(poziomAlertu, format.mintick) + "\",\"price\":\"" + str.tostring(close, format.mintick) + "\",\"bar_time\":\"" + str.tostring(time) + "\"}"
-    alert(payload, alert.freq_once_per_bar)
-
-if alertujPotwierdzeniaSfp and bearishSfp
-    string payload = "{\"event\":\"sfp_confirmed\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"direction\":\"bearish\",\"bias\":\"SHORT\",\"level\":\"" + str.tostring(bearishPoziom, format.mintick) + "\",\"sweep\":\"" + str.tostring(bearishWybicie, format.mintick) + "\",\"price\":\"" + str.tostring(close, format.mintick) + "\",\"bar_time\":\"" + str.tostring(time) + "\"}"
-    alert(payload, alert.freq_once_per_bar_close)
-
-if alertujPotwierdzeniaSfp and bullishSfp
-    string payload = "{\"event\":\"sfp_confirmed\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"direction\":\"bullish\",\"bias\":\"LONG\",\"level\":\"" + str.tostring(bullishPoziom, format.mintick) + "\",\"sweep\":\"" + str.tostring(bullishWybicie, format.mintick) + "\",\"price\":\"" + str.tostring(close, format.mintick) + "\",\"bar_time\":\"" + str.tostring(time) + "\"}"
-    alert(payload, alert.freq_once_per_bar_close)
-
-if alertujNoweFvg and (newBullFvgA or newBearFvgA)
-    alert(f_zone_payload("fvg_created", newBullFvgA, tfA, newFvgTopA, newFvgBottomA), alert.freq_all)
-if alertujNoweFvg and (newBullFvgB or newBearFvgB)
-    alert(f_zone_payload("fvg_created", newBullFvgB, tfB, newFvgTopB, newFvgBottomB), alert.freq_all)
-if alertujNoweFvg and (newBullFvgC or newBearFvgC)
-    alert(f_zone_payload("fvg_created", newBullFvgC, tfC, newFvgTopC, newFvgBottomC), alert.freq_all)
-
-if alertujNoweIfvg and (newBullIfvgA or newBearIfvgA)
-    alert(f_zone_payload("ifvg_created", newBullIfvgA, tfA, newIfvgTopA, newIfvgBottomA), alert.freq_all)
-if alertujNoweIfvg and (newBullIfvgB or newBearIfvgB)
-    alert(f_zone_payload("ifvg_created", newBullIfvgB, tfB, newIfvgTopB, newIfvgBottomB), alert.freq_all)
-if alertujNoweIfvg and (newBullIfvgC or newBearIfvgC)
-    alert(f_zone_payload("ifvg_created", newBullIfvgC, tfC, newIfvgTopC, newIfvgBottomC), alert.freq_all)

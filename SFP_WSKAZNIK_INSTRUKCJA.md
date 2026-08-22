@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.7 guide
+# SK SFP + FVG / IFVG v5.8 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `WATCH → RAW → CONF`.
 
@@ -27,21 +27,15 @@ With `Day / month separators` enabled, intraday charts keep Warsaw weekday label
 
 ## Alerts
 
-Enable `Enable alert() events`, then create one TradingView alert with the condition **Any alert() function call**. Dynamic JSON events include:
+Enable `SFP scanner alerts only`, then create one TradingView alert with the condition **Any alert() function call**. The only emitted event is `sr_touch` from the integrated 1H/4H scanner. FVG, IFVG, chart-only WATCH, RAW and CONF states remain visual and never generate Telegram notifications.
 
-- `sr_touch` from the integrated 1H/4H scanner
-- `sfp_touch`
-- `sfp_confirmed`
-- `fvg_created`
-- `ifvg_created`
-
-The payload contains symbol, chart timeframe, event direction, price data, and source timeframe where relevant. It contains no credentials. Put the private HTTPS endpoint only in TradingView's Webhook URL field.
+The payload contains only the scanner event, short market label, timeframe and source-bar time. It contains no credentials. Put the private HTTPS endpoint only in TradingView's Webhook URL field.
 
 The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYPE perpetual on Hyperliquid, and COMEX gold/silver continuous futures. Telegram formats these scanner events as one short line such as `SFP DOTKNIĘTE — BTC 1H`. Run the alert on a 1H or lower chart so 1H intrabar touches are not skipped.
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.7` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.8` script.
 
 ## Limitations
 

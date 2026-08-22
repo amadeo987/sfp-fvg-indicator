@@ -25,13 +25,7 @@ from typing import Any
 LOG = logging.getLogger("tv-telegram-bridge")
 MAX_BODY_BYTES = 64 * 1024
 MAX_QUEUE_SIZE = 200
-ALLOWED_EVENTS = {
-    "sr_touch",
-    "sfp_touch",
-    "sfp_confirmed",
-    "fvg_created",
-    "ifvg_created",
-}
+ALLOWED_EVENTS = {"sr_touch"}
 
 
 def _safe_error(exc: BaseException) -> str:
@@ -96,37 +90,12 @@ def validate_payload(payload: Any) -> dict[str, Any]:
 
 def format_message(payload: dict[str, Any]) -> str:
     event_name = _field(payload, "event")
-    if event_name == "sr_touch":
-        market = _field(payload, "market", _field(payload, "symbol"))
-        timeframe = _field(payload, "timeframe")
-        short_timeframe = {"60": "1H", "240": "4H"}.get(timeframe, timeframe)
-        return f"SFP DOTKNIĘTE — {market} {short_timeframe}"[:4096]
-    event = event_name.replace("_", " ").upper()
-    symbol = _field(payload, "symbol")
+    if event_name != "sr_touch":
+        raise ValueError("Unsupported notification event")
+    market = _field(payload, "market", _field(payload, "symbol"))
     timeframe = _field(payload, "timeframe")
-    source_timeframe = _field(payload, "source_timeframe", "")
-    direction = _field(payload, "direction", "")
-    kind = _field(payload, "kind", "")
-    price = _field(payload, "price", "")
-    side = _field(payload, "side", "")
-    level = _field(payload, "level", "")
-    distance_pct = _field(payload, "distance_pct", "")
-    lines = [f"{event}", f"{symbol} | chart {timeframe}"]
-    if source_timeframe and source_timeframe != "-":
-        lines.append(f"Source timeframe: {source_timeframe}")
-    if direction and direction != "-":
-        lines.append(f"Direction: {direction}")
-    if kind and kind != "-":
-        lines.append(f"Type: {kind}")
-    if side and side != "-":
-        lines.append(f"Level side: {side}")
-    if level and level != "-":
-        lines.append(f"Level: {level}")
-    if price and price != "-":
-        lines.append(f"Price: {price}")
-    if distance_pct and distance_pct != "-":
-        lines.append(f"Distance: {distance_pct}%")
-    return "\n".join(lines)[:4096]
+    short_timeframe = {"60": "1H", "240": "4H"}.get(timeframe, timeframe)
+    return f"SFP DOTKNIĘTE — {market} {short_timeframe}"[:4096]
 
 
 class TelegramClient:
