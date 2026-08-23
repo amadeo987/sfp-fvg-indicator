@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.8
+// [SK] SFP + FVG / IFVG v5.9
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.8", shorttitle = "SKSFP 5.8", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 30, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.9", shorttitle = "SKSFP 5.9", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -25,7 +25,8 @@ bool wlaczTfB = input.bool(true, "Use", inline = "tfB", group = grupaFvg, displa
 string tfBInput = input.timeframe("240", "Timeframe 2", inline = "tfB", group = grupaFvg, display = display.data_window)
 bool wlaczTfC = input.bool(true, "Use", inline = "tfC", group = grupaFvg, display = display.data_window)
 string tfCInput = input.timeframe("1D", "Timeframe 3", inline = "tfC", group = grupaFvg, display = display.data_window)
-int ileFvgNaStrone = input.int(2, "Nearest zones per side and timeframe", minval = 1, maxval = 3, group = grupaFvg, display = display.data_window)
+int ileFvgNadCena = input.int(2, "Nearest zones above per timeframe", minval = 1, maxval = 8, group = grupaFvg, display = display.data_window)
+int ileFvgPodCena = input.int(6, "Nearest zones below per timeframe", minval = 1, maxval = 8, group = grupaFvg, tooltip = "Shows a deeper stack of still-active FVG/IFVG zones below price so lower imbalances are not hidden by the nearest-zone limit.", display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -558,7 +559,8 @@ f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, 
     int[] selectedAbove = array.new_int()
     int[] selectedBelow = array.new_int()
     if enabled and array.size(tops) > 0
-        for slot = 0 to ileFvgNaStrone - 1
+        int ileSlotow = math.max(ileFvgNadCena, ileFvgPodCena)
+        for slot = 0 to ileSlotow - 1
             int bestAbove = -1
             float bestAboveDistance = 1e20
             int newestAbove = 0
@@ -586,9 +588,9 @@ f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, 
                     bestBelow := i
                     bestBelowDistance := belowDistance
                     newestBelow := startTime
-            if bestAbove >= 0
+            if slot < ileFvgNadCena and bestAbove >= 0
                 array.push(selectedAbove, bestAbove)
-            if bestBelow >= 0
+            if slot < ileFvgPodCena and bestBelow >= 0
                 array.push(selectedBelow, bestBelow)
 
     if enabled and array.size(selectedAbove) > 0

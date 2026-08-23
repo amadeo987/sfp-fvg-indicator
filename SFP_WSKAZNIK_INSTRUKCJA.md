@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.8 guide
+# SK SFP + FVG / IFVG v5.9 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `WATCH → RAW → CONF`.
 
@@ -17,7 +17,8 @@ Open **Settings → Inputs → FVG timeframes**.
 
 - `Match chart`: default. The source follows the chart. An H4 chart shows confirmed H4 zones, H1 shows H1, M15 shows M15, M30 shows M30, and D1 shows D1.
 - `Custom set`: enables up to three independent source books. Toggle each row and choose any supported TradingView timeframe. Duplicate timeframe selections are ignored.
-- `Nearest zones per side and timeframe`: shows one to three nearest active zones above and below price for every enabled source.
+- `Nearest zones above per timeframe`: shows two active zones above price by default.
+- `Nearest zones below per timeframe`: shows six active zones below price by default, so deeper unfilled imbalances remain visible. Both limits can be set from one to eight independently for every enabled source timeframe.
 
 Every source is calculated only from its last closed candle. A classic bullish FVG forms when the third candle's low is above the first candle's high; bearish is the reverse. A full wick fill removes the FVG. A source-timeframe close through the opposite edge converts it to an IFVG.
 
@@ -35,7 +36,7 @@ The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYP
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.8` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.9` script.
 
 ## Limitations
 
