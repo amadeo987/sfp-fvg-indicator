@@ -1,36 +1,70 @@
-# SK SFP + FVG / IFVG + RSI
+# SK TradingView Indicators
 
-Publiczny wskaźnik TradingView napisany w Pine Script v6. Łączy radar aktualnych poziomów SFP, najbliższe strefy FVG/IFVG z interwału 1H, oznaczenia dni tygodnia i klasyczne RSI 14.
+Open Pine Script v6 indicators for discretionary chart analysis. They do not place orders and do not require exchange API keys.
 
-## Funkcje
+## Included scripts
 
-- dwa najbliższe poziomy SFP nad i pod ceną,
-- zachowanie wykorzystanych poziomów jako `DOTKNIĘTY HIGH/LOW`,
-- potwierdzenia SFP po wybiciu struktury,
-- najbliższe FVG i IFVG wyliczane z zamkniętych świec 1H,
-- krótkie separatory i nazwy dni tygodnia,
-- klasyczne RSI 14 w dolnym panelu,
-- alerty dotknięcia i potwierdzenia SFP oraz zmian FVG/IFVG.
+### SK SFP + FVG / IFVG v5.9
 
-## Instalacja
+[`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
-1. Otwórz wykres w TradingView i przejdź do **Pine Editor**.
-2. Skopiuj całą zawartość pliku [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine).
-3. Wklej kod do nowego skryptu Pine.
-4. Zapisz skrypt i wybierz **Add to chart / Dodaj do wykresu**.
+- the `SFP WATCH → RAW → CONF` liquidity-sweep hierarchy,
+- confirmed, non-repainting FVG and IFVG zone books,
+- a default `Match chart` timeframe mode,
+- a `Custom set` mode with any combination of three user-selected timeframes,
+- asymmetric nearest-zone selection: two active zones above and six below price per enabled timeframe by default,
+- adaptive weekday/month markers,
+- an integrated, chart-clean 1H/4H scanner for BTC, ETH, SOL, XRP and LINK on OKX, HYPE on Hyperliquid, plus COMEX gold and silver continuous futures,
+- automatic removal of consumed WATCH context after its second separate retest,
+- a short `SKSFP 5.9` status-line name with no scanner table.
 
-Pełny opis poziomów, ustawień i alertów znajduje się w [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
+See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
-## Stan projektu
+### SK Current Day POC / VAH / VAL v1.0
 
-Aktualna wersja: **5.2**. Kod kompiluje się w Pine Script v6 bez błędów i ostrzeżeń.
+[`SK_Current_Day_POC_VAH_VAL.pine`](./SK_Current_Day_POC_VAH_VAL.pine) draws a developing current-day POC, VAH, and VAL on intraday charts. The default profile day is the full UTC day for 24/7 crypto markets.
 
-Najważniejsza rzecz do dalszego dopracowania to geometria i selekcja stref FVG/IFVG. Obecna implementacja celowo pokazuje tylko najbliższe strefy, ale nie każda strefa pokrywa się idealnie z ręcznym odczytem rynku. Zmiany będziemy rozwijać wersjami i weryfikować na różnych instrumentach oraz interwałach.
+The profile is an approximation based on chart-bar volume distributed across configurable price rows. It can differ from TradingView's built-in Volume Profile, which can use finer intrabar data. See [`CURRENT_DAY_PROFILE_GUIDE.md`](./CURRENT_DAY_PROFILE_GUIDE.md).
 
-## Ważne
+### SK MTF Nearest Support / Resistance v1.0
 
-To narzędzie analityczne, nie rekomendacja inwestycyjna ani gotowa strategia. Linie SFP wskazują obszary płynności warte obserwacji; nie gwarantują reakcji ceny. Wskaźnik nie składa zleceń.
+[`SK_MTF_Nearest_Support_Resistance.pine`](./SK_MTF_Nearest_Support_Resistance.pine) shows the nearest confirmed pivot support below price and resistance above price from up to three selected source timeframes. It is intentionally separate from the main SFP indicator. See [`SUPPORT_RESISTANCE_GUIDE.md`](./SUPPORT_RESISTANCE_GUIDE.md).
 
-## Licencja
+## Installation
 
-Projekt jest udostępniony na licencji MIT.
+1. Open a TradingView chart and select **Pine Editor**.
+2. Copy the complete contents of one `.pine` file into a new Pine script.
+3. Save the script and choose **Add to chart**.
+4. Repeat for any additional indicator you want to use.
+
+## Alerts and Telegram webhooks
+
+The main indicator emits only `sr_touch` JSON from its fixed SFP scanner. It never sends FVG, IFVG, chart-only WATCH, RAW, or CONF notifications. Create one alert using **Any alert() function call** and paste your private HTTPS webhook URL into TradingView's Webhook URL field.
+
+No bot token, chat ID, webhook secret, private hostname, or server address belongs in these public files. TradingView alerts are snapshots: recreate an alert after changing code or indicator inputs.
+
+The repository also contains a dependency-free, queue-backed receiver for forwarding those events to a Telegram bot. It binds to localhost by default and keeps every credential in a server-only environment file. See [`TELEGRAM_BRIDGE_GUIDE.md`](./TELEGRAM_BRIDGE_GUIDE.md).
+
+The scanner is integrated into the main SFP/FVG script, so one TradingView indicator slot and one **Any alert() function call** alert handle the chart logic and all 16 market/timeframe feeds. The former standalone scanner remains documented only as a legacy migration reference in [`SR_TELEGRAM_SCANNER_GUIDE.md`](./SR_TELEGRAM_SCANNER_GUIDE.md).
+
+## Repainting policy
+
+- SFP RAW and CONF signals require closed chart candles.
+- FVG/IFVG sources use the previous closed source-timeframe candle with `lookahead_on`; zones do not change while the source candle is open.
+- MTF support/resistance levels require confirmed pivots and therefore appear after the configured right-side pivot delay.
+- The current-day profile is intentionally developing and may move as new volume arrives during the active day.
+
+## Status
+
+- Pine language: **v6**
+- Main indicator: **v5.9**
+- Current-day profile: **v1.0**
+- MTF support/resistance: **v1.0**
+
+## Important
+
+These are analytical tools, not trading advice or autonomous strategies. They do not guarantee price reactions, profitability, or order execution.
+
+## License
+
+MIT. See [`LICENSE`](./LICENSE).

@@ -1,19 +1,32 @@
-// [SK] SFP + FVG / IFVG + RSI v5.2
-// Radar aktualnych pul płynności, na których może powstać SFP.
+// [SK] SFP + FVG / IFVG v5.9
+// Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
-// Sweep i powrót tworzą setup. Domyślny sygnał CONF powstaje dopiero po późniejszym
+// Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
 // zamknięciu ceny poza przeciwnym ekstremum świecy SFP (break struktury).
 //
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG + RSI v5.2", shorttitle = "SK SFP+FVG+RSI 5.2", overlay = false, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 20)
+indicator("[SK] SFP + FVG / IFVG v5.9", shorttitle = "SKSFP 5.9", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
-bool wlaczSfp = input.bool(true, "SFP — poziomy i potwierdzenia", group = "Włącz / wyłącz")
-bool wlaczFvg = input.bool(true, "FVG / IFVG — najbliższe strefy z 1H", group = "Włącz / wyłącz")
-bool wlaczDni = input.bool(true, "Dni tygodnia", group = "Włącz / wyłącz")
-bool wlaczAlerty = input.bool(false, "Alerty", group = "Włącz / wyłącz", tooltip = "Włącza alerty SFP oraz FVG/IFVG. W TradingView wybierz warunek: Dowolne wywołanie funkcji alert().")
+string grupaFunkcji = "Features"
+string grupaFvg = "FVG timeframes"
+bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji, display = display.data_window)
+bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.", display = display.data_window)
+bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
+bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.", display = display.data_window)
+bool wlaczAlerty = input.bool(true, "SFP scanner alerts only", group = grupaFunkcji, tooltip = "The single Any alert() function call alert sends only short SFP level-touch notifications for the fixed 1H/4H market list. FVG, IFVG and chart-only events are never sent.", display = display.data_window)
+
+string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.", display = display.data_window)
+bool wlaczTfA = input.bool(true, "Use", inline = "tfA", group = grupaFvg, display = display.data_window)
+string tfAInput = input.timeframe("60", "Timeframe 1", inline = "tfA", group = grupaFvg, display = display.data_window)
+bool wlaczTfB = input.bool(true, "Use", inline = "tfB", group = grupaFvg, display = display.data_window)
+string tfBInput = input.timeframe("240", "Timeframe 2", inline = "tfB", group = grupaFvg, display = display.data_window)
+bool wlaczTfC = input.bool(true, "Use", inline = "tfC", group = grupaFvg, display = display.data_window)
+string tfCInput = input.timeframe("1D", "Timeframe 3", inline = "tfC", group = grupaFvg, display = display.data_window)
+int ileFvgNadCena = input.int(2, "Nearest zones above per timeframe", minval = 1, maxval = 8, group = grupaFvg, display = display.data_window)
+int ileFvgPodCena = input.int(6, "Nearest zones below per timeframe", minval = 1, maxval = 8, group = grupaFvg, tooltip = "Shows a deeper stack of still-active FVG/IFVG zones below price so lower imbalances are not hidden by the nearest-zone limit.", display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -45,12 +58,13 @@ int okresWolumenu = 20
 float mnoznikWolumenu = 1.20
 bool pokazOstatniSygnal = wlaczSfp
 int waznoscSygnalu = 72
-bool pokazPanel = false
+int waznoscRaw = 12
 color kolorShort = color.rgb(239, 83, 80)
 color kolorLong = color.rgb(38, 166, 154)
 
 float minWielkoscFvgAtr = 0.12
 int maksWiekStrefFvg = 300
+int maksWiekStrefIfvg = 72
 color kolorStrefyFvg = color.rgb(255, 193, 7)
 int przezroczystoscFvg = 72
 
@@ -61,11 +75,6 @@ int przezroczystoscDni = 45
 int przezroczystoscSeparatorow = 55
 color kolorNazwDni = color.silver
 color kolorSeparatorow = color.white
-
-bool alertujDotknieciaSfp = wlaczAlerty and wlaczSfp
-bool alertujPotwierdzeniaSfp = wlaczAlerty and wlaczSfp
-bool alertujNoweFvg = wlaczAlerty and wlaczFvg
-bool alertujNoweIfvg = wlaczAlerty and wlaczFvg
 
 // ==================== PAMIĘĆ JAKOŚCIOWYCH SWINGÓW ====================
 var float[] cenyHigh = array.new_float()
@@ -227,24 +236,28 @@ if barstate.isconfirmed and array.size(cenyLow) > 0
             array.remove(baryLow, i)
             array.remove(jakoscLow, i)
 
-// Dotknięty poziom jest już zużyty jako pula płynności, więc nie wraca do aktywnego
-// radaru. Pozostaje jednak na wykresie przez ustawioną liczbę świec albo do chwili,
-// gdy cena oddali się od niego o zbyt wiele ATR.
+// Po pierwszym naruszeniu poziom trafia do krótkiej pamięci. Drugi osobny retest
+// (cena musi najpierw wrócić na właściwą stronę) usuwa go natychmiast, żeby stara
+// pula płynności nie wisiała na wykresie po wielokrotnym przykryciu.
 float limitDotknietych = atr * usunDotknietyPoAtr
 if barstate.isconfirmed and array.size(dotknieteHigh) > 0
     for i = array.size(dotknieteHigh) - 1 to 0
+        float poziom = array.get(dotknieteHigh, i)
         bool zaStary = bar_index - array.get(dotknieteHighBar, i) > pamiecDotknietych
-        bool zaDaleko = math.abs(close - array.get(dotknieteHigh, i)) > limitDotknietych
-        if not pokazDotkniete or zaStary or zaDaleko
+        bool zaDaleko = math.abs(close - poziom) > limitDotknietych
+        bool drugiRetest = bar_index > array.get(dotknieteHighBar, i) and high >= poziom and high[1] < poziom
+        if not pokazDotkniete or zaStary or zaDaleko or drugiRetest
             array.remove(dotknieteHigh, i)
             array.remove(dotknieteHighPivotBar, i)
             array.remove(dotknieteHighBar, i)
 
 if barstate.isconfirmed and array.size(dotknieteLow) > 0
     for i = array.size(dotknieteLow) - 1 to 0
+        float poziom = array.get(dotknieteLow, i)
         bool zaStary = bar_index - array.get(dotknieteLowBar, i) > pamiecDotknietych
-        bool zaDaleko = math.abs(close - array.get(dotknieteLow, i)) > limitDotknietych
-        if not pokazDotkniete or zaStary or zaDaleko
+        bool zaDaleko = math.abs(close - poziom) > limitDotknietych
+        bool drugiRetest = bar_index > array.get(dotknieteLowBar, i) and low <= poziom and low[1] > poziom
+        if not pokazDotkniete or zaStary or zaDaleko or drugiRetest
             array.remove(dotknieteLow, i)
             array.remove(dotknieteLowPivotBar, i)
             array.remove(dotknieteLowBar, i)
@@ -400,7 +413,7 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "DOTKNIĘTY HIGH  " : "SFP HIGH " + str.tostring(i + 1) + "  "
+                string tekst = dotknietyNaOtwartej ? "WATCH HIGH — DOTKNIĘTY  " : "SFP WATCH HIGH " + str.tostring(i + 1) + "  "
                 label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
@@ -413,7 +426,7 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "DOTKNIĘTY LOW  " : "SFP LOW " + str.tostring(i + 1) + "  "
+                string tekst = dotknietyNaOtwartej ? "WATCH LOW — DOTKNIĘTY  " : "SFP WATCH LOW " + str.tostring(i + 1) + "  "
                 label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
@@ -426,7 +439,7 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "DOTKNIĘTY HIGH  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "WATCH HIGH — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneHigh += 1
 
@@ -439,195 +452,298 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "DOTKNIĘTY LOW  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "WATCH LOW — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneLow += 1
 
-// ==================== FVG / IFVG 1H — TYLKO NAJBLIŻSZE ====================
-// Dane są zawsze liczone z potwierdzonych świec godzinowych. Offset [1] z
-// lookahead_on udostępnia wyłącznie ostatnią zamkniętą godzinę.
-[h1Czas, h1High, h1Low, h1Close, h1HighPierwszej, h1LowPierwszej, h1Atr] = request.security(syminfo.tickerid, "60", [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
-int zmianaH1Czas = ta.change(h1Czas)
-bool nowaZamknietaGodzina = not na(h1Czas) and zmianaH1Czas != 0
+// ==================== FVG / IFVG — CONFIRMED MULTI-TIMEFRAME BOOKS ====================
+// Every source uses the last closed source candle with lookahead_on. This is the
+// non-repainting HTF request pattern: a zone can only change on a confirmed
+// source-timeframe close, never while that source candle is still forming.
+f_tf_label(string tf) =>
+    tf == "1" ? "1m" : tf == "3" ? "3m" : tf == "5" ? "5m" : tf == "15" ? "15m" : tf == "30" ? "30m" : tf == "60" ? "1H" : tf == "120" ? "2H" : tf == "240" ? "4H" : tf == "1D" or tf == "D" ? "1D" : tf == "1W" or tf == "W" ? "1W" : tf
 
-var float[] goryStref = array.new_float()
-var float[] dolyStref = array.new_float()
-var int[] kierunkiStref = array.new_int()       // 1 = wzrostowa, -1 = spadkowa
-var bool[] strefyOdwrocone = array.new_bool()   // false = FVG, true = IFVG
-var int[] czasyStartuStref = array.new_int()
+f_clear_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, int[] startTimes, int[] inversionTimes) =>
+    array.clear(tops)
+    array.clear(bottoms)
+    array.clear(directions)
+    array.clear(inversions)
+    array.clear(startTimes)
+    array.clear(inversionTimes)
 
-bool noweBullFvg = false
-bool noweBearFvg = false
-bool noweBullIfvg = false
-bool noweBearIfvg = false
-float noweFvgGora = na
-float noweFvgDol = na
-float noweIfvgGora = na
-float noweIfvgDol = na
+f_update_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, int[] startTimes, int[] inversionTimes, bool enabled, int sourceTime, float sourceHigh, float sourceLow, float sourceClose, float firstHigh, float firstLow, float sourceAtr, int sourceMs) =>
+    bool newBullFvg = false
+    bool newBearFvg = false
+    bool newBullIfvg = false
+    bool newBearIfvg = false
+    float newFvgTop = na
+    float newFvgBottom = na
+    float newIfvgTop = na
+    float newIfvgBottom = na
+    int sourceTimeChange = ta.change(sourceTime)
+    bool newClosedSourceBar = enabled and not na(sourceTime) and sourceTimeChange != 0
 
-if not wlaczFvg
-    array.clear(goryStref)
-    array.clear(dolyStref)
-    array.clear(kierunkiStref)
-    array.clear(strefyOdwrocone)
-    array.clear(czasyStartuStref)
+    if not enabled
+        f_clear_book(tops, bottoms, directions, inversions, startTimes, inversionTimes)
 
-if wlaczFvg and nowaZamknietaGodzina
-    // Najpierw aktualizujemy wcześniejsze strefy ostatnią zamkniętą świecą 1H.
-    if array.size(goryStref) > 0
-        for i = array.size(goryStref) - 1 to 0
-            float gora = array.get(goryStref, i)
-            float dol = array.get(dolyStref, i)
-            int kierunek = array.get(kierunkiStref, i)
-            bool odwrocona = array.get(strefyOdwrocone, i)
-            int czasStartu = array.get(czasyStartuStref, i)
-            bool zaStara = h1Czas - czasStartu > maksWiekStrefFvg * 60 * 60 * 1000
-            bool usunStrefe = zaStara
+    if newClosedSourceBar
+        if array.size(tops) > 0
+            for i = array.size(tops) - 1 to 0
+                float zoneTop = array.get(tops, i)
+                float zoneBottom = array.get(bottoms, i)
+                int direction = array.get(directions, i)
+                bool inverted = array.get(inversions, i)
+                int ageStart = inverted and not na(array.get(inversionTimes, i)) ? array.get(inversionTimes, i) : array.get(startTimes, i)
+                int maxAge = inverted ? maksWiekStrefIfvg : maksWiekStrefFvg
+                bool removeZone = sourceTime - ageStart > maxAge * sourceMs
 
-            if not usunStrefe and not odwrocona
-                bool inwersja = (kierunek == 1 and h1Close < dol) or (kierunek == -1 and h1Close > gora)
-                bool pelneWypelnienie = (kierunek == 1 and h1Low <= dol) or (kierunek == -1 and h1High >= gora)
-                if inwersja
-                    int nowyKierunek = -kierunek
-                    array.set(kierunkiStref, i, nowyKierunek)
-                    array.set(strefyOdwrocone, i, true)
-                    array.set(czasyStartuStref, i, h1Czas)
-                    noweBullIfvg := nowyKierunek == 1
-                    noweBearIfvg := nowyKierunek == -1
-                    noweIfvgGora := gora
-                    noweIfvgDol := dol
-                else if pelneWypelnienie
-                    usunStrefe := true
-            else if not usunStrefe
-                bool wypelnioneIfvg = (kierunek == 1 and h1Low <= dol) or (kierunek == -1 and h1High >= gora)
-                if wypelnioneIfvg
-                    usunStrefe := true
+                if not removeZone and not inverted
+                    bool inversion = (direction == 1 and sourceClose < zoneBottom) or (direction == -1 and sourceClose > zoneTop)
+                    bool filled = (direction == 1 and sourceLow <= zoneBottom) or (direction == -1 and sourceHigh >= zoneTop)
+                    if inversion
+                        int newDirection = -direction
+                        bool invertedFilled = (newDirection == 1 and sourceLow <= zoneBottom) or (newDirection == -1 and sourceHigh >= zoneTop)
+                        if invertedFilled
+                            removeZone := true
+                        else
+                            array.set(directions, i, newDirection)
+                            array.set(inversions, i, true)
+                            array.set(inversionTimes, i, sourceTime)
+                            newBullIfvg := newBullIfvg or newDirection == 1
+                            newBearIfvg := newBearIfvg or newDirection == -1
+                            newIfvgTop := zoneTop
+                            newIfvgBottom := zoneBottom
+                    else if filled
+                        removeZone := true
+                else if not removeZone
+                    bool filledIfvg = (direction == 1 and sourceLow <= zoneBottom) or (direction == -1 and sourceHigh >= zoneTop)
+                    if filledIfvg
+                        removeZone := true
 
-            if usunStrefe
-                array.remove(goryStref, i)
-                array.remove(dolyStref, i)
-                array.remove(kierunkiStref, i)
-                array.remove(strefyOdwrocone, i)
-                array.remove(czasyStartuStref, i)
+                if removeZone
+                    array.remove(tops, i)
+                    array.remove(bottoms, i)
+                    array.remove(directions, i)
+                    array.remove(inversions, i)
+                    array.remove(startTimes, i)
+                    array.remove(inversionTimes, i)
 
-    // Nowe klasyczne FVG powstaje po zamknięciu trzeciej świecy 1H.
-    bool kandydatBullFvg = not na(h1Atr) and h1Atr > 0 and h1Low > h1HighPierwszej and h1Low - h1HighPierwszej >= h1Atr * minWielkoscFvgAtr
-    bool kandydatBearFvg = not na(h1Atr) and h1Atr > 0 and h1High < h1LowPierwszej and h1LowPierwszej - h1High >= h1Atr * minWielkoscFvgAtr
-    if kandydatBullFvg or kandydatBearFvg
-        bool bull = kandydatBullFvg
-        float gora = bull ? h1Low : h1LowPierwszej
-        float dol = bull ? h1HighPierwszej : h1High
-        array.push(goryStref, gora)
-        array.push(dolyStref, dol)
-        array.push(kierunkiStref, bull ? 1 : -1)
-        array.push(strefyOdwrocone, false)
-        array.push(czasyStartuStref, h1Czas)
-        noweBullFvg := bull
-        noweBearFvg := not bull
-        noweFvgGora := gora
-        noweFvgDol := dol
+        bool bullCandidate = not na(sourceAtr) and sourceAtr > 0 and sourceLow > firstHigh and sourceLow - firstHigh >= sourceAtr * minWielkoscFvgAtr
+        bool bearCandidate = not na(sourceAtr) and sourceAtr > 0 and sourceHigh < firstLow and firstLow - sourceHigh >= sourceAtr * minWielkoscFvgAtr
+        if bullCandidate or bearCandidate
+            bool bull = bullCandidate
+            float zoneTop = bull ? sourceLow : firstLow
+            float zoneBottom = bull ? firstHigh : sourceHigh
+            array.push(tops, zoneTop)
+            array.push(bottoms, zoneBottom)
+            array.push(directions, bull ? 1 : -1)
+            array.push(inversions, false)
+            array.push(startTimes, sourceTime)
+            array.push(inversionTimes, int(na))
+            newBullFvg := bull
+            newBearFvg := not bull
+            newFvgTop := zoneTop
+            newFvgBottom := zoneBottom
 
-    while array.size(goryStref) > 60
-        array.shift(goryStref)
-        array.shift(dolyStref)
-        array.shift(kierunkiStref)
-        array.shift(strefyOdwrocone)
-        array.shift(czasyStartuStref)
+        while array.size(tops) > 60
+            array.shift(tops)
+            array.shift(bottoms)
+            array.shift(directions)
+            array.shift(inversions)
+            array.shift(startTimes)
+            array.shift(inversionTimes)
 
-// Z całej pamięci wybieramy tylko najbliższą wzrostową i najbliższą spadkową strefę.
-int indeksBull = -1
-int indeksBear = -1
-float odlegloscBull = 1e20
-float odlegloscBear = 1e20
-if wlaczFvg and array.size(goryStref) > 0
-    for i = 0 to array.size(goryStref) - 1
-        float gora = array.get(goryStref, i)
-        float dol = array.get(dolyStref, i)
-        int kierunek = array.get(kierunkiStref, i)
-        float odleglosc = close > gora ? close - gora : close < dol ? dol - close : 0.0
-        if kierunek == 1 and odleglosc < odlegloscBull
-            indeksBull := i
-            odlegloscBull := odleglosc
-        if kierunek == -1 and odleglosc < odlegloscBear
-            indeksBear := i
-            odlegloscBear := odleglosc
+    [newBullFvg, newBearFvg, newBullIfvg, newBearIfvg, newFvgTop, newFvgBottom, newIfvgTop, newIfvgBottom]
 
-var box boxBull = na
-var box boxBear = na
+f_draw_book(float[] tops, float[] bottoms, int[] directions, bool[] inversions, int[] startTimes, bool enabled, string tfLabel, float liveHigh, float liveLow, box[] rendered) =>
+    int[] selectedAbove = array.new_int()
+    int[] selectedBelow = array.new_int()
+    if enabled and array.size(tops) > 0
+        int ileSlotow = math.max(ileFvgNadCena, ileFvgPodCena)
+        for slot = 0 to ileSlotow - 1
+            int bestAbove = -1
+            float bestAboveDistance = 1e20
+            int newestAbove = 0
+            int bestBelow = -1
+            float bestBelowDistance = 1e20
+            int newestBelow = 0
+            for i = 0 to array.size(tops) - 1
+                float zoneTop = array.get(tops, i)
+                float zoneBottom = array.get(bottoms, i)
+                int direction = array.get(directions, i)
+                int startTime = array.get(startTimes, i)
+                bool liveFilled = (direction == 1 and liveLow <= zoneBottom) or (direction == -1 and liveHigh >= zoneTop)
+                bool intersects = not liveFilled and close >= zoneBottom and close <= zoneTop
+                bool above = not liveFilled and (zoneBottom > close or (intersects and direction == -1))
+                bool below = not liveFilled and (zoneTop < close or (intersects and direction == 1))
+                float aboveDistance = above ? math.max(zoneBottom - close, 0.0) : 1e20
+                float belowDistance = below ? math.max(close - zoneTop, 0.0) : 1e20
+                bool betterAbove = aboveDistance < bestAboveDistance or (aboveDistance == bestAboveDistance and startTime > newestAbove)
+                bool betterBelow = belowDistance < bestBelowDistance or (belowDistance == bestBelowDistance and startTime > newestBelow)
+                if above and not array.includes(selectedAbove, i) and betterAbove
+                    bestAbove := i
+                    bestAboveDistance := aboveDistance
+                    newestAbove := startTime
+                if below and not array.includes(selectedBelow, i) and betterBelow
+                    bestBelow := i
+                    bestBelowDistance := belowDistance
+                    newestBelow := startTime
+            if slot < ileFvgNadCena and bestAbove >= 0
+                array.push(selectedAbove, bestAbove)
+            if slot < ileFvgPodCena and bestBelow >= 0
+                array.push(selectedBelow, bestBelow)
+
+    if enabled and array.size(selectedAbove) > 0
+        for i = 0 to array.size(selectedAbove) - 1
+            int index = array.get(selectedAbove, i)
+            string zoneText = (array.get(inversions, index) ? "IFVG " : "FVG ") + tfLabel
+            box zone = box.new(left = array.get(startTimes, index), top = array.get(tops, index), right = time_close, bottom = array.get(bottoms, index), xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = zoneText, text_color = color.white, text_size = size.small, text_halign = text.align_center, text_valign = text.align_center)
+            array.push(rendered, zone)
+    if enabled and array.size(selectedBelow) > 0
+        for i = 0 to array.size(selectedBelow) - 1
+            int index = array.get(selectedBelow, i)
+            string zoneText = (array.get(inversions, index) ? "IFVG " : "FVG ") + tfLabel
+            box zone = box.new(left = array.get(startTimes, index), top = array.get(tops, index), right = time_close, bottom = array.get(bottoms, index), xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = zoneText, text_color = color.white, text_size = size.small, text_halign = text.align_center, text_valign = text.align_center)
+            array.push(rendered, zone)
+
+bool matchChart = trybTfFvg == "Match chart"
+string tfA = matchChart ? timeframe.period : tfAInput
+string tfB = tfBInput
+string tfC = tfCInput
+bool useA = wlaczFvg and (matchChart or wlaczTfA)
+bool useB = wlaczFvg and not matchChart and wlaczTfB and (not useA or tfB != tfA)
+bool useC = wlaczFvg and not matchChart and wlaczTfC and (not useA or tfC != tfA) and (not useB or tfC != tfB)
+
+[sourceTimeA, sourceHighA, sourceLowA, sourceCloseA, firstHighA, firstLowA, sourceAtrA] = request.security(syminfo.tickerid, tfA, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+[sourceTimeB, sourceHighB, sourceLowB, sourceCloseB, firstHighB, firstLowB, sourceAtrB] = request.security(syminfo.tickerid, tfB, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+[sourceTimeC, sourceHighC, sourceLowC, sourceCloseC, firstHighC, firstLowC, sourceAtrC] = request.security(syminfo.tickerid, tfC, [time[1], high[1], low[1], close[1], high[3], low[3], ta.atr(14)[1]], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_on)
+[liveHighA, liveLowA] = request.security(syminfo.tickerid, tfA, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+[liveHighB, liveLowB] = request.security(syminfo.tickerid, tfB, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+[liveHighC, liveLowC] = request.security(syminfo.tickerid, tfC, [high, low], gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+int sourceMsA = int(timeframe.in_seconds(tfA) * 1000)
+int sourceMsB = int(timeframe.in_seconds(tfB) * 1000)
+int sourceMsC = int(timeframe.in_seconds(tfC) * 1000)
+
+var float[] topsA = array.new_float()
+var float[] bottomsA = array.new_float()
+var int[] directionsA = array.new_int()
+var bool[] inversionsA = array.new_bool()
+var int[] startTimesA = array.new_int()
+var int[] inversionTimesA = array.new_int()
+var float[] topsB = array.new_float()
+var float[] bottomsB = array.new_float()
+var int[] directionsB = array.new_int()
+var bool[] inversionsB = array.new_bool()
+var int[] startTimesB = array.new_int()
+var int[] inversionTimesB = array.new_int()
+var float[] topsC = array.new_float()
+var float[] bottomsC = array.new_float()
+var int[] directionsC = array.new_int()
+var bool[] inversionsC = array.new_bool()
+var int[] startTimesC = array.new_int()
+var int[] inversionTimesC = array.new_int()
+var box[] narysowaneStrefyFvg = array.new_box()
+
+[newBullFvgA, newBearFvgA, newBullIfvgA, newBearIfvgA, newFvgTopA, newFvgBottomA, newIfvgTopA, newIfvgBottomA] = f_update_book(topsA, bottomsA, directionsA, inversionsA, startTimesA, inversionTimesA, useA, sourceTimeA, sourceHighA, sourceLowA, sourceCloseA, firstHighA, firstLowA, sourceAtrA, sourceMsA)
+[newBullFvgB, newBearFvgB, newBullIfvgB, newBearIfvgB, newFvgTopB, newFvgBottomB, newIfvgTopB, newIfvgBottomB] = f_update_book(topsB, bottomsB, directionsB, inversionsB, startTimesB, inversionTimesB, useB, sourceTimeB, sourceHighB, sourceLowB, sourceCloseB, firstHighB, firstLowB, sourceAtrB, sourceMsB)
+[newBullFvgC, newBearFvgC, newBullIfvgC, newBearIfvgC, newFvgTopC, newFvgBottomC, newIfvgTopC, newIfvgBottomC] = f_update_book(topsC, bottomsC, directionsC, inversionsC, startTimesC, inversionTimesC, useC, sourceTimeC, sourceHighC, sourceLowC, sourceCloseC, firstHighC, firstLowC, sourceAtrC, sourceMsC)
 
 if barstate.islast
-    if wlaczFvg and indeksBull >= 0
-        float gora = array.get(goryStref, indeksBull)
-        float dol = array.get(dolyStref, indeksBull)
-        int lewo = array.get(czasyStartuStref, indeksBull)
-        string tekst = array.get(strefyOdwrocone, indeksBull) ? "IFVG 1H" : "FVG 1H"
-        if na(boxBull)
-            boxBull := box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.new(color.white, 0), text_size = size.small, text_halign = text.align_center, text_valign = text.align_center, force_overlay = true)
-        else
-            box.set_left(boxBull, lewo)
-            box.set_right(boxBull, time_close)
-            box.set_top(boxBull, gora)
-            box.set_bottom(boxBull, dol)
-            box.set_text(boxBull, tekst)
-    else if not na(boxBull)
-        box.delete(boxBull)
-        boxBull := na
+    if array.size(narysowaneStrefyFvg) > 0
+        for i = array.size(narysowaneStrefyFvg) - 1 to 0
+            box.delete(array.get(narysowaneStrefyFvg, i))
+    array.clear(narysowaneStrefyFvg)
+    f_draw_book(topsA, bottomsA, directionsA, inversionsA, startTimesA, useA, f_tf_label(tfA), liveHighA, liveLowA, narysowaneStrefyFvg)
+    f_draw_book(topsB, bottomsB, directionsB, inversionsB, startTimesB, useB, f_tf_label(tfB), liveHighB, liveLowB, narysowaneStrefyFvg)
+    f_draw_book(topsC, bottomsC, directionsC, inversionsC, startTimesC, useC, f_tf_label(tfC), liveHighC, liveLowC, narysowaneStrefyFvg)
 
-    if wlaczFvg and indeksBear >= 0
-        float gora = array.get(goryStref, indeksBear)
-        float dol = array.get(dolyStref, indeksBear)
-        int lewo = array.get(czasyStartuStref, indeksBear)
-        string tekst = array.get(strefyOdwrocone, indeksBear) ? "IFVG 1H" : "FVG 1H"
-        if na(boxBear)
-            boxBear := box.new(left = lewo, top = gora, right = time_close, bottom = dol, xloc = xloc.bar_time, extend = extend.none, border_color = color.new(kolorStrefyFvg, 100), border_width = 0, bgcolor = color.new(kolorStrefyFvg, przezroczystoscFvg), text = tekst, text_color = color.new(color.white, 0), text_size = size.small, text_halign = text.align_center, text_valign = text.align_center, force_overlay = true)
-        else
-            box.set_left(boxBear, lewo)
-            box.set_right(boxBear, time_close)
-            box.set_top(boxBear, gora)
-            box.set_bottom(boxBear, dol)
-            box.set_text(boxBear, tekst)
-    else if not na(boxBear)
-        box.delete(boxBear)
-        boxBear := na
-
-// ==================== KLASYCZNE RSI 14 ====================
-// Wskaźnik działa w osobnym panelu RSI, a wszystkie obiekty SFP/FVG są
-// wymuszone na głównym wykresie przez force_overlay. Dzięki temu całość nadal
-// liczy się jako jeden wskaźnik na wykresie.
-float rsi14 = ta.rsi(close, 14)
-plot(rsi14, title = "RSI 14", color = color.rgb(126, 87, 194), linewidth = 2)
-rsiGorna = hline(70, title = "RSI — wykupienie", color = color.new(color.gray, 45), linestyle = hline.style_dashed)
-rsiSrodek = hline(50, title = "RSI — środek", color = color.new(color.gray, 72), linestyle = hline.style_dotted)
-rsiDolna = hline(30, title = "RSI — wyprzedanie", color = color.new(color.gray, 45), linestyle = hline.style_dashed)
-fill(rsiGorna, rsiDolna, color = color.new(color.rgb(126, 87, 194), 92), title = "Tło RSI 30–70")
-
-// ==================== DNI TYGODNIA (CZAS WARSZAWSKI) ====================
+// ==================== KALENDARZ (CZAS WARSZAWSKI) ====================
 int czasDniaWarszawa = time("D", "0000-2359:1234567", strefaCzasowaDni)
 int zmianaDniaWarszawa = ta.change(czasDniaWarszawa)
 bool poczatekDniaWarszawa = not na(czasDniaWarszawa) and zmianaDniaWarszawa != 0
 int dzienWarszawa = dayofweek(time, strefaCzasowaDni)
 int godzinaWarszawa = hour(time, strefaCzasowaDni)
 int godzinaPoprzedniejSwiecyWarszawa = hour(time[1], strefaCzasowaDni)
+int miesiacWarszawa = month(time, strefaCzasowaDni)
+int rokWarszawa = year(time, strefaCzasowaDni)
+int poprzedniMiesiacWarszawa = month(time[1], strefaCzasowaDni)
+int poprzedniRokWarszawa = year(time[1], strefaCzasowaDni)
+bool trybMiesiecy = timeframe.isdaily or timeframe.isweekly or timeframe.ismonthly
+bool poczatekMiesiacaWarszawa = na(time[1]) or miesiacWarszawa != poprzedniMiesiacWarszawa or rokWarszawa != poprzedniRokWarszawa
 // Nazwa trafia na pierwszą świecę po lokalnym południu, czyli w środek
 // odcinka wyznaczonego przez dwie kolejne północe. Działa także wtedy,
 // gdy wybrany interwał nie ma świecy otwieranej dokładnie o 12:00.
 bool srodekDniaWarszawa = not na(czasDniaWarszawa) and godzinaWarszawa >= 12 and (na(czasDniaWarszawa[1]) or czasDniaWarszawa != czasDniaWarszawa[1] or godzinaPoprzedniejSwiecyWarszawa < 12)
 
-// Cienki glif bez tła etykiety ma wysokość pojedynczej litery i leży na tej samej dolnej linii.
-plotchar(pokazDniTygodnia and pokazSeparatoryDni and poczatekDniaWarszawa, title = "Początek dnia", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
+// Intraday: dzień tygodnia. D/W/M: jeden znacznik miesiąca zamiast białego paska na każdej świecy.
+plotchar(pokazDniTygodnia and pokazSeparatoryDni and not trybMiesiecy and poczatekDniaWarszawa, title = "Początek dnia", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
+plotchar(pokazDniTygodnia and pokazSeparatoryDni and trybMiesiecy and not timeframe.ismonthly and poczatekMiesiacaWarszawa, title = "Początek miesiąca", char = "l", location = location.bottom, color = color.new(kolorSeparatorow, przezroczystoscSeparatorow), size = size.tiny, display = display.pane, force_overlay = true)
 
 color tloNazwyDnia = color.new(kolorNazwDni, 100)
 color tekstNazwyDnia = color.new(kolorNazwDni, przezroczystoscDni)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.monday, title = "Poniedziałek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Poniedziałek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.tuesday, title = "Wtorek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wtorek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.wednesday, title = "Środa", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Środa", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.thursday, title = "Czwartek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Czwartek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.friday, title = "Piątek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Piątek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.saturday, title = "Sobota", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sobota", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
-plotshape(pokazDniTygodnia and srodekDniaWarszawa and dzienWarszawa == dayofweek.sunday, title = "Niedziela", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Niedziela", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.monday, title = "Poniedziałek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Poniedziałek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.tuesday, title = "Wtorek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wtorek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.wednesday, title = "Środa", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Środa", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.thursday, title = "Czwartek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Czwartek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.friday, title = "Piątek", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Piątek", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.saturday, title = "Sobota", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sobota", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazDniTygodnia and not trybMiesiecy and srodekDniaWarszawa and dzienWarszawa == dayofweek.sunday, title = "Niedziela", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Niedziela", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
 
-// ==================== TYLKO OSTATNI POTWIERDZONY SFP ====================
+bool pokazNazweMiesiaca = pokazDniTygodnia and trybMiesiecy and poczatekMiesiacaWarszawa
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 1, title = "Styczeń", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sty", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 2, title = "Luty", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lut", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 3, title = "Marzec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Mar", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 4, title = "Kwiecień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Kwi", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 5, title = "Maj", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Maj", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 6, title = "Czerwiec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Cze", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 7, title = "Lipiec", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lip", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 8, title = "Sierpień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Sie", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 9, title = "Wrzesień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Wrz", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 10, title = "Październik", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Paź", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 11, title = "Listopad", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Lis", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+plotshape(pokazNazweMiesiaca and miesiacWarszawa == 12, title = "Grudzień", style = shape.labelup, location = location.bottom, color = tloNazwyDnia, text = "Gru", textcolor = tekstNazwyDnia, size = size.tiny, display = display.pane, force_overlay = true)
+
+// ==================== TYLKO OSTATNI SFP RAW ====================
+// RAW powstaje dopiero na zamknięciu świecy, gdy knot zamiata potwierdzony
+// swing, a cały korpus wraca za poziom. To nadal setup oczekujący na CONF.
+var line ostatniaRawLinia = na
+var label ostatniaRawEtykieta = na
+var int ostatniRawBar = na
+var float ostatniRawPoziom = na
+var int ostatniRawKierunek = 0  // -1 = SHORT, 1 = LONG
+
+if bearishSetup or bullishSetup
+    if not na(ostatniaRawLinia)
+        line.delete(ostatniaRawLinia)
+        ostatniaRawLinia := na
+    if not na(ostatniaRawEtykieta)
+        label.delete(ostatniaRawEtykieta)
+        ostatniaRawEtykieta := na
+    bool rawShort = bearishSetup
+    float rawPoziom = rawShort ? bearishSetupPoziom : bullishSetupPoziom
+    int rawPivotBar = rawShort ? bearishSetupPivotBar : bullishSetupPivotBar
+    color rawKolor = rawShort ? kolorShort : kolorLong
+    if wlaczSfp and pokazSfpRaw
+        ostatniaRawLinia := line.new(rawPivotBar, rawPoziom, bar_index, rawPoziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(rawKolor, 28), style = line.style_dashed, width = 1, force_overlay = true)
+        ostatniaRawEtykieta := label.new(bar_index + 1, rawPoziom, rawShort ? "SFP RAW SHORT" : "SFP RAW LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = color.new(rawKolor, 8), size = size.tiny, force_overlay = true)
+    ostatniRawBar := bar_index
+    ostatniRawPoziom := rawPoziom
+    ostatniRawKierunek := rawShort ? -1 : 1
+
+if not na(ostatniRawBar) and bar_index - ostatniRawBar > waznoscRaw
+    if not na(ostatniaRawLinia)
+        line.delete(ostatniaRawLinia)
+        ostatniaRawLinia := na
+    if not na(ostatniaRawEtykieta)
+        label.delete(ostatniaRawEtykieta)
+        ostatniaRawEtykieta := na
+    ostatniRawBar := na
+    ostatniRawPoziom := na
+    ostatniRawKierunek := 0
+
+// ==================== TYLKO OSTATNI POTWIERDZONY SFP CONF ====================
 var line ostatniaLinia = na
+var label ostatniaEtykieta = na
 var int ostatniSygnalBar = na
 var string ostatniSygnal = "Brak"
 var float ostatniPoziom = na
@@ -635,12 +751,27 @@ var float ostatniPoziom = na
 if bearishSfp or bullishSfp
     if not na(ostatniaLinia)
         line.delete(ostatniaLinia)
+    if not na(ostatniaEtykieta)
+        label.delete(ostatniaEtykieta)
     bool shortSignal = bearishSfp
     float poziom = shortSignal ? bearishPoziom : bullishPoziom
     int pivotBar = shortSignal ? bearishPivotBar : bullishPivotBar
     color sygnalKolor = shortSignal ? kolorShort : kolorLong
+    int kierunekSygnalu = shortSignal ? -1 : 1
+    bool tenSamRaw = ostatniRawKierunek == kierunekSygnalu and not na(ostatniRawPoziom) and math.abs(ostatniRawPoziom - poziom) <= syminfo.mintick
+    if tenSamRaw
+        if not na(ostatniaRawLinia)
+            line.delete(ostatniaRawLinia)
+            ostatniaRawLinia := na
+        if not na(ostatniaRawEtykieta)
+            label.delete(ostatniaRawEtykieta)
+            ostatniaRawEtykieta := na
+        ostatniRawBar := na
+        ostatniRawPoziom := na
+        ostatniRawKierunek := 0
     if pokazOstatniSygnal
-        ostatniaLinia := line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.none, color = sygnalKolor, style = line.style_solid, width = 2, force_overlay = true)
+        ostatniaLinia := line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = sygnalKolor, style = line.style_solid, width = 3, force_overlay = true)
+        ostatniaEtykieta := label.new(bar_index + 1, poziom, shortSignal ? "SFP CONF SHORT" : "SFP CONF LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = sygnalKolor, size = size.tiny, force_overlay = true)
     ostatniSygnalBar := bar_index
     ostatniSygnal := shortSignal ? "Bearish / SHORT" : "Bullish / LONG"
     ostatniPoziom := poziom
@@ -649,56 +780,130 @@ if not na(ostatniSygnalBar) and bar_index - ostatniSygnalBar > waznoscSygnalu
     if not na(ostatniaLinia)
         line.delete(ostatniaLinia)
         ostatniaLinia := na
+    if not na(ostatniaEtykieta)
+        label.delete(ostatniaEtykieta)
+        ostatniaEtykieta := na
 
-// ==================== OPCJONALNY PANEL ====================
-f_cena(float wartosc) => na(wartosc) ? "—" : str.tostring(wartosc, format.mintick)
-float pierwszyHigh = array.size(wybraneHigh) > 0 ? array.get(wybraneHigh, 0) : na
-float pierwszyLow = array.size(wybraneLow) > 0 ? array.get(wybraneLow, 0) : na
-var table panel = table.new(position.top_right, 2, 4, bgcolor = color.new(color.black, 20), frame_color = color.new(color.gray, 65), frame_width = 1, force_overlay = true)
-if barstate.islast
-    if pokazPanel
-        table.cell(panel, 0, 0, "SK SFP + FVG + RSI v5.2", text_color = color.white)
-        table.cell(panel, 1, 0, timeframe.period + " / " + tryb, text_color = color.white)
-        table.cell(panel, 0, 1, "Najbliższy high", text_color = kolorHigh)
-        table.cell(panel, 1, 1, f_cena(pierwszyHigh), text_color = color.white)
-        table.cell(panel, 0, 2, "Najbliższy low", text_color = kolorLow)
-        table.cell(panel, 1, 2, f_cena(pierwszyLow), text_color = color.white)
-        table.cell(panel, 0, 3, "Ostatni sygnał", text_color = color.silver)
-        table.cell(panel, 1, 3, ostatniSygnal + " " + f_cena(ostatniPoziom), text_color = color.white)
-    else
-        table.clear(panel, 0, 0, 1, 3)
+// ==================== WBUDOWANY SKANER SFP — 8 RYNKÓW, 1H + 4H ====================
+// Stała lista nie zajmuje miejsca w legendzie. Skaner używa wyłącznie danych
+// rynkowych i alertów; nie składa zleceń ani nie modyfikuje pozostałych alertów.
+string skanerTf1 = "60"
+string skanerTf2 = "240"
+int skanerPivotLewy = 5
+int skanerPivotPrawy = 5
+int skanerPamiec = 6
+float skanerTolerancja = 0.05 / 100.0
 
-// ==================== ALERTY ====================
-bool dowolneNoweFvg = noweBullFvg or noweBearFvg
-bool dowolneNoweIfvg = noweBullIfvg or noweBearIfvg
+f_skan_najblizszy_opor(float reference, float p0, float p1, float p2, float p3, float p4, float p5) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to skanerPamiec - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate > reference and (na(nearest) or candidate < nearest)
+            nearest := candidate
+    nearest
 
-alertcondition(alertujDotknieciaSfp and dotkniecieShortAlert, title = "SFP — dotknięcie HIGH / obserwacja SHORT", message = "Dotknięcie SFP HIGH na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
-alertcondition(alertujDotknieciaSfp and dotkniecieLongAlert, title = "SFP — dotknięcie LOW / obserwacja LONG", message = "Dotknięcie SFP LOW na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
-alertcondition(alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert), title = "SFP — dowolne dotknięcie poziomu", message = "Dotknięcie poziomu SFP na {{exchange}}:{{ticker}} | TF {{interval}} | cena {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and bearishSfp, title = "SFP — potwierdzony spadkowy / SHORT", message = "Potwierdzony spadkowy SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and bullishSfp, title = "SFP — potwierdzony wzrostowy / LONG", message = "Potwierdzony wzrostowy SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
-alertcondition(alertujPotwierdzeniaSfp and (bearishSfp or bullishSfp), title = "SFP — dowolny potwierdzony sygnał", message = "Potwierdzony SFP na {{exchange}}:{{ticker}} | TF {{interval}} | zamknięcie {{close}}")
-alertcondition(alertujNoweFvg and dowolneNoweFvg, title = "FVG 1H — nowa strefa", message = "Nowa strefa FVG 1H na {{exchange}}:{{ticker}} | cena {{close}}")
-alertcondition(alertujNoweIfvg and dowolneNoweIfvg, title = "IFVG 1H — nowa inwersja", message = "Nowa strefa IFVG 1H na {{exchange}}:{{ticker}} | cena {{close}}")
+f_skan_najblizsze_wsparcie(float reference, float p0, float p1, float p2, float p3, float p4, float p5) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to skanerPamiec - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate < reference and (na(nearest) or candidate > nearest)
+            nearest := candidate
+    nearest
 
-if alertujDotknieciaSfp and (dotkniecieShortAlert or dotkniecieLongAlert)
-    bool shortRadar = dotkniecieShortAlert
-    float poziomAlertu = shortRadar ? dotkniecieHighPoziom : dotkniecieLowPoziom
-    string stronaAlertu = shortRadar ? "HIGH" : "LOW"
-    string kierunekAlertu = shortRadar ? "SHORT" : "LONG"
-    string payload = "{\"event\":\"sfp_touch\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"side\":\"" + stronaAlertu + "\",\"bias\":\"" + kierunekAlertu + "\",\"level\":\"" + str.tostring(poziomAlertu, format.mintick) + "\",\"price\":\"" + str.tostring(close, format.mintick) + "\",\"bar_time\":\"" + str.tostring(time) + "\"}"
-    alert(payload, alert.freq_once_per_bar)
+f_skanuj_sfp() =>
+    float ph = ta.pivothigh(high, skanerPivotLewy, skanerPivotPrawy)
+    float pl = ta.pivotlow(low, skanerPivotLewy, skanerPivotPrawy)
+    float h0 = ta.valuewhen(not na(ph), ph, 0)[1]
+    float h1 = ta.valuewhen(not na(ph), ph, 1)[1]
+    float h2 = ta.valuewhen(not na(ph), ph, 2)[1]
+    float h3 = ta.valuewhen(not na(ph), ph, 3)[1]
+    float h4 = ta.valuewhen(not na(ph), ph, 4)[1]
+    float h5 = ta.valuewhen(not na(ph), ph, 5)[1]
+    float l0 = ta.valuewhen(not na(pl), pl, 0)[1]
+    float l1 = ta.valuewhen(not na(pl), pl, 1)[1]
+    float l2 = ta.valuewhen(not na(pl), pl, 2)[1]
+    float l3 = ta.valuewhen(not na(pl), pl, 3)[1]
+    float l4 = ta.valuewhen(not na(pl), pl, 4)[1]
+    float l5 = ta.valuewhen(not na(pl), pl, 5)[1]
+    float reference = close[1]
+    float resistance = f_skan_najblizszy_opor(reference, h0, h1, h2, h3, h4, h5)
+    float support = f_skan_najblizsze_wsparcie(reference, l0, l1, l2, l3, l4, l5)
+    bool touchingResistance = not na(resistance) and high >= resistance * (1.0 - skanerTolerancja) and low <= resistance * (1.0 + skanerTolerancja)
+    bool touchingSupport = not na(support) and high >= support * (1.0 - skanerTolerancja) and low <= support * (1.0 + skanerTolerancja)
+    [time, resistance, support, touchingResistance and not touchingResistance[1], touchingSupport and not touchingSupport[1]]
 
-if alertujPotwierdzeniaSfp and bearishSfp
-    alert("Potwierdzony spadkowy SFP / SHORT | " + syminfo.tickerid + " | TF " + timeframe.period + " | poziom " + str.tostring(bearishPoziom, format.mintick) + " | sweep " + str.tostring(bearishWybicie, format.mintick), alert.freq_once_per_bar_close)
+string skanerBtc = "OKX:BTCUSDT.P"
+string skanerEth = "OKX:ETHUSDT.P"
+string skanerSol = "OKX:SOLUSDT.P"
+string skanerHype = "Hyperliquid:HYPEUSDC.P"
+string skanerXrp = "OKX:XRPUSDT.P"
+string skanerLink = "OKX:LINKUSDT.P"
+string skanerGold = "COMEX:GC1!"
+string skanerSilver = "COMEX:SI1!"
 
-if alertujPotwierdzeniaSfp and bullishSfp
-    alert("Potwierdzony wzrostowy SFP / LONG | " + syminfo.tickerid + " | TF " + timeframe.period + " | poziom " + str.tostring(bullishPoziom, format.mintick) + " | sweep " + str.tostring(bullishWybicie, format.mintick), alert.freq_once_per_bar_close)
+[btc1Time, btc1R, btc1S, btc1TouchR, btc1TouchS] = request.security(skanerBtc, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[btc4Time, btc4R, btc4S, btc4TouchR, btc4TouchS] = request.security(skanerBtc, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[eth1Time, eth1R, eth1S, eth1TouchR, eth1TouchS] = request.security(skanerEth, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[eth4Time, eth4R, eth4S, eth4TouchR, eth4TouchS] = request.security(skanerEth, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[sol1Time, sol1R, sol1S, sol1TouchR, sol1TouchS] = request.security(skanerSol, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[sol4Time, sol4R, sol4S, sol4TouchR, sol4TouchS] = request.security(skanerSol, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[hype1Time, hype1R, hype1S, hype1TouchR, hype1TouchS] = request.security(skanerHype, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[hype4Time, hype4R, hype4S, hype4TouchR, hype4TouchS] = request.security(skanerHype, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[xrp1Time, xrp1R, xrp1S, xrp1TouchR, xrp1TouchS] = request.security(skanerXrp, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[xrp4Time, xrp4R, xrp4S, xrp4TouchR, xrp4TouchS] = request.security(skanerXrp, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[link1Time, link1R, link1S, link1TouchR, link1TouchS] = request.security(skanerLink, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[link4Time, link4R, link4S, link4TouchR, link4TouchS] = request.security(skanerLink, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[gold1Time, gold1R, gold1S, gold1TouchR, gold1TouchS] = request.security(skanerGold, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[gold4Time, gold4R, gold4S, gold4TouchR, gold4TouchS] = request.security(skanerGold, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[silver1Time, silver1R, silver1S, silver1TouchR, silver1TouchS] = request.security(skanerSilver, skanerTf1, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+[silver4Time, silver4R, silver4S, silver4TouchR, silver4TouchS] = request.security(skanerSilver, skanerTf2, f_skanuj_sfp(), lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
 
-if alertujNoweFvg and dowolneNoweFvg
-    string kierunekFvg = noweBullFvg ? "wzrostowe" : "spadkowe"
-    alert("Nowe FVG 1H " + kierunekFvg + " | " + syminfo.tickerid + " | strefa " + str.tostring(noweFvgDol, format.mintick) + "–" + str.tostring(noweFvgGora, format.mintick), alert.freq_once_per_bar_close)
+var int[] skanerOstatniCzas = array.new_int(32, na)
+var float[] skanerOstatniPoziom = array.new_float(32, na)
 
-if alertujNoweIfvg and dowolneNoweIfvg
-    string kierunekIfvg = noweBullIfvg ? "wzrostowe" : "spadkowe"
-    alert("Nowe IFVG 1H " + kierunekIfvg + " | " + syminfo.tickerid + " | strefa " + str.tostring(noweIfvgDol, format.mintick) + "–" + str.tostring(noweIfvgGora, format.mintick), alert.freq_once_per_bar_close)
+f_skan_swiezy(int slot, bool touched, int sourceTime, float level) =>
+    int previousTime = array.get(skanerOstatniCzas, slot)
+    float previousLevel = array.get(skanerOstatniPoziom, slot)
+    bool fresh = wlaczAlerty and touched and not na(sourceTime) and not na(level) and (sourceTime != previousTime or level != previousLevel)
+    if fresh
+        array.set(skanerOstatniCzas, slot, sourceTime)
+        array.set(skanerOstatniPoziom, slot, level)
+    fresh
+
+f_skan_payload(string market, string tf, int sourceTime) =>
+    "{\"event\":\"sr_touch\",\"market\":\"" + market + "\",\"symbol\":\"" + market + "\",\"timeframe\":\"" + tf + "\",\"bar_time\":\"" + str.tostring(sourceTime) + "\"}"
+
+if f_skan_swiezy(0, btc1TouchR, btc1Time, btc1R) or f_skan_swiezy(1, btc1TouchS, btc1Time, btc1S)
+    alert(f_skan_payload("BTC", skanerTf1, btc1Time), alert.freq_all)
+if f_skan_swiezy(2, btc4TouchR, btc4Time, btc4R) or f_skan_swiezy(3, btc4TouchS, btc4Time, btc4S)
+    alert(f_skan_payload("BTC", skanerTf2, btc4Time), alert.freq_all)
+if f_skan_swiezy(4, eth1TouchR, eth1Time, eth1R) or f_skan_swiezy(5, eth1TouchS, eth1Time, eth1S)
+    alert(f_skan_payload("ETH", skanerTf1, eth1Time), alert.freq_all)
+if f_skan_swiezy(6, eth4TouchR, eth4Time, eth4R) or f_skan_swiezy(7, eth4TouchS, eth4Time, eth4S)
+    alert(f_skan_payload("ETH", skanerTf2, eth4Time), alert.freq_all)
+if f_skan_swiezy(8, sol1TouchR, sol1Time, sol1R) or f_skan_swiezy(9, sol1TouchS, sol1Time, sol1S)
+    alert(f_skan_payload("SOL", skanerTf1, sol1Time), alert.freq_all)
+if f_skan_swiezy(10, sol4TouchR, sol4Time, sol4R) or f_skan_swiezy(11, sol4TouchS, sol4Time, sol4S)
+    alert(f_skan_payload("SOL", skanerTf2, sol4Time), alert.freq_all)
+if f_skan_swiezy(12, hype1TouchR, hype1Time, hype1R) or f_skan_swiezy(13, hype1TouchS, hype1Time, hype1S)
+    alert(f_skan_payload("HYPE", skanerTf1, hype1Time), alert.freq_all)
+if f_skan_swiezy(14, hype4TouchR, hype4Time, hype4R) or f_skan_swiezy(15, hype4TouchS, hype4Time, hype4S)
+    alert(f_skan_payload("HYPE", skanerTf2, hype4Time), alert.freq_all)
+if f_skan_swiezy(16, xrp1TouchR, xrp1Time, xrp1R) or f_skan_swiezy(17, xrp1TouchS, xrp1Time, xrp1S)
+    alert(f_skan_payload("XRP", skanerTf1, xrp1Time), alert.freq_all)
+if f_skan_swiezy(18, xrp4TouchR, xrp4Time, xrp4R) or f_skan_swiezy(19, xrp4TouchS, xrp4Time, xrp4S)
+    alert(f_skan_payload("XRP", skanerTf2, xrp4Time), alert.freq_all)
+if f_skan_swiezy(20, link1TouchR, link1Time, link1R) or f_skan_swiezy(21, link1TouchS, link1Time, link1S)
+    alert(f_skan_payload("LINK", skanerTf1, link1Time), alert.freq_all)
+if f_skan_swiezy(22, link4TouchR, link4Time, link4R) or f_skan_swiezy(23, link4TouchS, link4Time, link4S)
+    alert(f_skan_payload("LINK", skanerTf2, link4Time), alert.freq_all)
+if f_skan_swiezy(24, gold1TouchR, gold1Time, gold1R) or f_skan_swiezy(25, gold1TouchS, gold1Time, gold1S)
+    alert(f_skan_payload("GOLD", skanerTf1, gold1Time), alert.freq_all)
+if f_skan_swiezy(26, gold4TouchR, gold4Time, gold4R) or f_skan_swiezy(27, gold4TouchS, gold4Time, gold4S)
+    alert(f_skan_payload("GOLD", skanerTf2, gold4Time), alert.freq_all)
+if f_skan_swiezy(28, silver1TouchR, silver1Time, silver1R) or f_skan_swiezy(29, silver1TouchS, silver1Time, silver1S)
+    alert(f_skan_payload("SILVER", skanerTf1, silver1Time), alert.freq_all)
+if f_skan_swiezy(30, silver4TouchR, silver4Time, silver4R) or f_skan_swiezy(31, silver4TouchS, silver4Time, silver4S)
+    alert(f_skan_payload("SILVER", skanerTf2, silver4Time), alert.freq_all)

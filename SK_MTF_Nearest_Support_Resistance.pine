@@ -1,0 +1,115 @@
+// [SK] MTF Nearest Support / Resistance v1.0
+// Shows the nearest confirmed pivot support and resistance from up to three timeframes.
+// Source values use only closed source-timeframe candles. This indicator never places orders.
+
+//@version=6
+indicator("[SK] MTF Nearest Support / Resistance v1.0", shorttitle = "SK MTF S/R", overlay = true, max_lines_count = 12, max_labels_count = 12, dynamic_requests = true)
+
+string groupTimeframes = "Timeframes"
+string groupDetection = "Detection"
+string groupStyle = "Style"
+
+bool useTf1 = input.bool(true, "Use", inline = "tf1", group = groupTimeframes)
+string tf1 = input.timeframe("60", "Timeframe 1", inline = "tf1", group = groupTimeframes)
+bool useTf2 = input.bool(true, "Use", inline = "tf2", group = groupTimeframes)
+string tf2 = input.timeframe("240", "Timeframe 2", inline = "tf2", group = groupTimeframes)
+bool useTf3 = input.bool(true, "Use", inline = "tf3", group = groupTimeframes)
+string tf3 = input.timeframe("1D", "Timeframe 3", inline = "tf3", group = groupTimeframes)
+
+int pivotLeft = input.int(5, "Pivot bars left", minval = 2, maxval = 20, group = groupDetection)
+int pivotRight = input.int(5, "Pivot bars right", minval = 2, maxval = 20, group = groupDetection, tooltip = "A level becomes available only after this many source-timeframe bars confirm the pivot.")
+int sourceMemory = input.int(6, "Confirmed pivots checked per side", minval = 2, maxval = 6, group = groupDetection)
+
+bool showLabels = input.bool(true, "Show labels", group = groupStyle)
+int lineHistory = input.int(40, "Line history (chart bars)", minval = 5, maxval = 500, group = groupStyle)
+color resistanceColor = input.color(color.rgb(239, 83, 80), "Resistance color", group = groupStyle)
+color supportColor = input.color(color.rgb(38, 166, 154), "Support color", group = groupStyle)
+
+f_snapshot() =>
+    float pivotHigh = ta.pivothigh(high, pivotLeft, pivotRight)
+    float pivotLow = ta.pivotlow(low, pivotLeft, pivotRight)
+    [ta.valuewhen(not na(pivotHigh), pivotHigh, 0)[1], ta.valuewhen(not na(pivotHigh), pivotHigh, 1)[1], ta.valuewhen(not na(pivotHigh), pivotHigh, 2)[1], ta.valuewhen(not na(pivotHigh), pivotHigh, 3)[1], ta.valuewhen(not na(pivotHigh), pivotHigh, 4)[1], ta.valuewhen(not na(pivotHigh), pivotHigh, 5)[1], ta.valuewhen(not na(pivotLow), pivotLow, 0)[1], ta.valuewhen(not na(pivotLow), pivotLow, 1)[1], ta.valuewhen(not na(pivotLow), pivotLow, 2)[1], ta.valuewhen(not na(pivotLow), pivotLow, 3)[1], ta.valuewhen(not na(pivotLow), pivotLow, 4)[1], ta.valuewhen(not na(pivotLow), pivotLow, 5)[1]]
+
+f_nearest_resistance(float reference, float p0, float p1, float p2, float p3, float p4, float p5, int count) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to count - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate > reference and (na(nearest) or candidate < nearest)
+            nearest := candidate
+    nearest
+
+f_nearest_support(float reference, float p0, float p1, float p2, float p3, float p4, float p5, int count) =>
+    float nearest = na
+    float[] candidates = array.from(p0, p1, p2, p3, p4, p5)
+    for i = 0 to count - 1
+        float candidate = array.get(candidates, i)
+        if not na(candidate) and candidate < reference and (na(nearest) or candidate > nearest)
+            nearest := candidate
+    nearest
+
+f_tf_label(string tf) =>
+    int seconds = timeframe.in_seconds(tf)
+    seconds < 60 ? str.tostring(seconds) + "s" : seconds < 3600 ? str.tostring(int(seconds / 60)) + "m" : seconds < 86400 ? str.tostring(int(seconds / 3600)) + "H" : seconds < 604800 ? str.tostring(int(seconds / 86400)) + "D" : seconds < 2592000 ? str.tostring(int(seconds / 604800)) + "W" : str.tostring(int(seconds / 2592000)) + "M"
+
+f_draw(float price, string labelText, color levelColor, line oldLine, label oldLabel) =>
+    if not na(oldLine)
+        line.delete(oldLine)
+    if not na(oldLabel)
+        label.delete(oldLabel)
+    line newLine = na
+    label newLabel = na
+    if not na(price)
+        newLine := line.new(math.max(0, bar_index - lineHistory), price, bar_index, price, xloc = xloc.bar_index, extend = extend.right, color = levelColor, width = 2, force_overlay = true)
+        if showLabels
+            newLabel := label.new(bar_index + 1, price, labelText + "  " + str.tostring(price, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(levelColor, 5), textcolor = color.white, size = size.tiny, force_overlay = true)
+    [newLine, newLabel]
+
+[h10, h11, h12, h13, h14, h15, l10, l11, l12, l13, l14, l15] = request.security(syminfo.tickerid, tf1, f_snapshot(), lookahead = barmerge.lookahead_on)
+[h20, h21, h22, h23, h24, h25, l20, l21, l22, l23, l24, l25] = request.security(syminfo.tickerid, tf2, f_snapshot(), lookahead = barmerge.lookahead_on)
+[h30, h31, h32, h33, h34, h35, l30, l31, l32, l33, l34, l35] = request.security(syminfo.tickerid, tf3, f_snapshot(), lookahead = barmerge.lookahead_on)
+
+bool active1 = useTf1
+bool active2 = useTf2 and (not active1 or tf2 != tf1)
+bool active3 = useTf3 and (not active1 or tf3 != tf1) and (not active2 or tf3 != tf2)
+float reference = close
+
+float resistance1 = active1 ? f_nearest_resistance(reference, h10, h11, h12, h13, h14, h15, sourceMemory) : na
+float support1 = active1 ? f_nearest_support(reference, l10, l11, l12, l13, l14, l15, sourceMemory) : na
+float resistance2 = active2 ? f_nearest_resistance(reference, h20, h21, h22, h23, h24, h25, sourceMemory) : na
+float support2 = active2 ? f_nearest_support(reference, l20, l21, l22, l23, l24, l25, sourceMemory) : na
+float resistance3 = active3 ? f_nearest_resistance(reference, h30, h31, h32, h33, h34, h35, sourceMemory) : na
+float support3 = active3 ? f_nearest_support(reference, l30, l31, l32, l33, l34, l35, sourceMemory) : na
+
+var line resistanceLine1 = na
+var line supportLine1 = na
+var line resistanceLine2 = na
+var line supportLine2 = na
+var line resistanceLine3 = na
+var line supportLine3 = na
+var label resistanceLabel1 = na
+var label supportLabel1 = na
+var label resistanceLabel2 = na
+var label supportLabel2 = na
+var label resistanceLabel3 = na
+var label supportLabel3 = na
+
+if barstate.islast
+    [newResistanceLine1, newResistanceLabel1] = f_draw(resistance1, f_tf_label(tf1) + " R", resistanceColor, resistanceLine1, resistanceLabel1)
+    [newSupportLine1, newSupportLabel1] = f_draw(support1, f_tf_label(tf1) + " S", supportColor, supportLine1, supportLabel1)
+    [newResistanceLine2, newResistanceLabel2] = f_draw(resistance2, f_tf_label(tf2) + " R", color.new(resistanceColor, 18), resistanceLine2, resistanceLabel2)
+    [newSupportLine2, newSupportLabel2] = f_draw(support2, f_tf_label(tf2) + " S", color.new(supportColor, 18), supportLine2, supportLabel2)
+    [newResistanceLine3, newResistanceLabel3] = f_draw(resistance3, f_tf_label(tf3) + " R", color.new(resistanceColor, 35), resistanceLine3, resistanceLabel3)
+    [newSupportLine3, newSupportLabel3] = f_draw(support3, f_tf_label(tf3) + " S", color.new(supportColor, 35), supportLine3, supportLabel3)
+    resistanceLine1 := newResistanceLine1
+    resistanceLabel1 := newResistanceLabel1
+    supportLine1 := newSupportLine1
+    supportLabel1 := newSupportLabel1
+    resistanceLine2 := newResistanceLine2
+    resistanceLabel2 := newResistanceLabel2
+    supportLine2 := newSupportLine2
+    supportLabel2 := newSupportLabel2
+    resistanceLine3 := newResistanceLine3
+    resistanceLabel3 := newResistanceLabel3
+    supportLine3 := newSupportLine3
+    supportLabel3 := newSupportLabel3
