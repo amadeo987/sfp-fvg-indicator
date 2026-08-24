@@ -4,11 +4,11 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 
 ## Included scripts
 
-### SK SFP + FVG / IFVG v5.9
+### SK SFP + FVG / IFVG v5.10
 
 [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
-- the `SFP WATCH → RAW → CONF` liquidity-sweep hierarchy,
+- the compact `SFP? → SFP → RAW → CONF` liquidity-sweep hierarchy,
 - confirmed, non-repainting FVG and IFVG zone books,
 - a default `Match chart` timeframe mode,
 - a `Custom set` mode with any combination of three user-selected timeframes,
@@ -16,7 +16,7 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 - adaptive weekday/month markers,
 - an integrated, chart-clean 1H/4H scanner for BTC, ETH, SOL, XRP and LINK on OKX, HYPE on Hyperliquid, plus COMEX gold and silver continuous futures,
 - automatic removal of consumed WATCH context after its second separate retest,
-- a short `SKSFP 5.9` status-line name with no scanner table.
+- three blue candidate levels on each side of price and a short `SKSFP 5.10` status-line name with no scanner table.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
@@ -57,7 +57,7 @@ The scanner is integrated into the main SFP/FVG script, so one TradingView indic
 ## Status
 
 - Pine language: **v6**
-- Main indicator: **v5.9**
+- Main indicator: **v5.10**
 - Current-day profile: **v1.0**
 - MTF support/resistance: **v1.0**
 
