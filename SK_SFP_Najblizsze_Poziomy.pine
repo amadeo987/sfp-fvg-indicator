@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.9
+// [SK] SFP + FVG / IFVG v5.10
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.9", shorttitle = "SKSFP 5.9", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.10", shorttitle = "SKSFP 5.10", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -36,11 +36,11 @@ float laczenieAtr = 0.50
 int okresAtr = 14
 int maksWiek = 400
 float maksOdlegloscAtr = 15.0
-int ileNadCena = wlaczSfp ? 2 : 0
-int ilePodCena = wlaczSfp ? 2 : 0
+int ileNadCena = wlaczSfp ? 3 : 0
+int ilePodCena = wlaczSfp ? 3 : 0
 bool pokazNazwy = wlaczSfp
 color kolorHigh = color.rgb(41, 98, 255)
-color kolorLow = color.rgb(38, 166, 154)
+color kolorLow = color.rgb(41, 98, 255)
 bool pokazDotkniete = wlaczSfp
 int pamiecDotknietych = 12
 float usunDotknietyPoAtr = 5.0
@@ -413,8 +413,8 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "WATCH HIGH — DOTKNIĘTY  " : "SFP WATCH HIGH " + str.tostring(i + 1) + "  "
-                label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
+                string tekst = dotknietyNaOtwartej ? "SFP" : "SFP?"
+                label lb = label.new(bar_index + 1, poziom, tekst, xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
     if array.size(wybraneLow) > 0
@@ -426,8 +426,8 @@ if barstate.islast
             line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, dotknietyNaOtwartej ? 48 : przezroczystosc), style = dotknietyNaOtwartej ? line.style_dashed : line.style_solid, width = dotknietyNaOtwartej ? 1 : i == 0 ? 2 : 1, force_overlay = true)
             array.push(linieRadaru, ln)
             if pokazNazwy
-                string tekst = dotknietyNaOtwartej ? "WATCH LOW — DOTKNIĘTY  " : "SFP WATCH LOW " + str.tostring(i + 1) + "  "
-                label lb = label.new(bar_index + 1, poziom, tekst + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
+                string tekst = dotknietyNaOtwartej ? "SFP" : "SFP?"
+                label lb = label.new(bar_index + 1, poziom, tekst, xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, dotknietyNaOtwartej ? 62 : 15), textcolor = color.white, size = size.tiny, force_overlay = true)
                 array.push(etykietyRadaru, lb)
 
     if pokazDotkniete and ileDotknietychNaStrone > 0 and array.size(dotknieteHigh) > 0
@@ -439,7 +439,7 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "WATCH HIGH — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneHigh += 1
 
@@ -452,7 +452,7 @@ if barstate.islast
                 line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, 58), style = line.style_dashed, width = 1, force_overlay = true)
                 array.push(linieRadaru, ln)
                 if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "WATCH LOW — DOTKNIĘTY  " + str.tostring(poziom, format.mintick), xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                    label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
                     array.push(etykietyRadaru, lb)
                 narysowaneLow += 1
 
