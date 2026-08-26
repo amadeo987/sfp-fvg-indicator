@@ -65,7 +65,7 @@ float mnoznikWolumenu = 1.20
 bool pokazOstatniSygnal = pokazKierunkoweSfp
 // CONF jest historycznym potwierdzeniem rozegranego setupu, a nie poziomem
 // wejscia przy pozniejszym powrocie ceny. Pokazujemy go tylko na swiecy CONF.
-int waznoscSygnalu = 1
+int waznoscSygnalu = 0
 int waznoscRaw = 12
 color kolorShort = color.rgb(239, 83, 80)
 color kolorLong = color.rgb(38, 166, 154)
