@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.10 guide
+# SK SFP + FVG / IFVG v5.11 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -10,6 +10,8 @@ The main indicator is a compact liquidity and imbalance radar. Its visible hiera
 - `SFP CONF SHORT/LONG`: within the next three candles, price closes beyond the opposite extreme of the RAW candle. This is the strongest state produced by the indicator, but it still requires trading context and risk management.
 
 The default selective quality filter uses a 10/10 swing, a minimum 1.25 ATR reaction, and at most three current `SFP?` levels on each side of price. A used liquidity pool cannot produce another setup.
+
+On CRYPTOCAP market-cap indices such as `TOTAL`, `TOTAL2` and `TOTAL3`, the indicator keeps blue `SFP?`/`SFP` context and FVG/IFVG zones but suppresses directional red/green RAW and CONF lines. These indices are observational aggregates rather than directly tradable instruments, so signal-style lines would be misleading there. Normal crypto pairs and other instruments keep the full hierarchy.
 
 ## FVG timeframe modes
 
@@ -36,7 +38,7 @@ The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYP
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.10` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.11` script.
 
 ## Limitations
 
