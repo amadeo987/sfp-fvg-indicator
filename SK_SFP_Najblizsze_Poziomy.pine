@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.10
+// [SK] SFP + FVG / IFVG v5.11
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.10", shorttitle = "SKSFP 5.10", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.11", shorttitle = "SKSFP 5.11", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -17,6 +17,12 @@ bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = 
 bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
 bool wlaczDni = input.bool(true, "Day / month separators", group = grupaFunkcji, tooltip = "Intraday charts show Warsaw weekdays. Daily, weekly, and monthly charts show month markers instead.", display = display.data_window)
 bool wlaczAlerty = input.bool(true, "SFP scanner alerts only", group = grupaFunkcji, tooltip = "The single Any alert() function call alert sends only short SFP level-touch notifications for the fixed 1H/4H market list. FVG, IFVG and chart-only events are never sent.", display = display.data_window)
+
+// CRYPTOCAP:TOTAL/TOTAL2/TOTAL3 są indeksami obserwacyjnymi, a nie instrumentami
+// do bezpośredniego wejścia. Zostawiamy na nich radar SFP i FVG, ale bez
+// kierunkowych czerwonych/zielonych linii RAW/CONF wyglądających jak sygnał.
+bool indeksKapitalizacjiKrypto = syminfo.prefix == "CRYPTOCAP"
+bool pokazKierunkoweSfp = wlaczSfp and not indeksKapitalizacjiKrypto
 
 string trybTfFvg = input.string("Match chart", "Timeframe mode", options = ["Match chart", "Custom set"], group = grupaFvg, tooltip = "Match chart follows the open chart timeframe. Custom set can show one, two, or three independent confirmed-timeframe zone books at once.", display = display.data_window)
 bool wlaczTfA = input.bool(true, "Use", inline = "tfA", group = grupaFvg, display = display.data_window)
@@ -56,7 +62,7 @@ float buforUniewaznieniaAtr = 0.10
 bool filtrWolumenu = false
 int okresWolumenu = 20
 float mnoznikWolumenu = 1.20
-bool pokazOstatniSygnal = wlaczSfp
+bool pokazOstatniSygnal = pokazKierunkoweSfp
 int waznoscSygnalu = 72
 int waznoscRaw = 12
 color kolorShort = color.rgb(239, 83, 80)
@@ -723,7 +729,7 @@ if bearishSetup or bullishSetup
     float rawPoziom = rawShort ? bearishSetupPoziom : bullishSetupPoziom
     int rawPivotBar = rawShort ? bearishSetupPivotBar : bullishSetupPivotBar
     color rawKolor = rawShort ? kolorShort : kolorLong
-    if wlaczSfp and pokazSfpRaw
+    if pokazKierunkoweSfp and pokazSfpRaw
         ostatniaRawLinia := line.new(rawPivotBar, rawPoziom, bar_index, rawPoziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(rawKolor, 28), style = line.style_dashed, width = 1, force_overlay = true)
         ostatniaRawEtykieta := label.new(bar_index + 1, rawPoziom, rawShort ? "SFP RAW SHORT" : "SFP RAW LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = color.new(rawKolor, 8), size = size.tiny, force_overlay = true)
     ostatniRawBar := bar_index
