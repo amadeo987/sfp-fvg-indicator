@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.11
+// [SK] SFP + FVG / IFVG v5.13
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.11", shorttitle = "SKSFP 5.11", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.13", shorttitle = "SKSFP 5.13", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -63,7 +63,9 @@ bool filtrWolumenu = false
 int okresWolumenu = 20
 float mnoznikWolumenu = 1.20
 bool pokazOstatniSygnal = pokazKierunkoweSfp
-int waznoscSygnalu = 72
+// CONF jest historycznym potwierdzeniem rozegranego setupu, a nie poziomem
+// wejscia przy pozniejszym powrocie ceny. Pokazujemy go tylko na swiecy CONF.
+int waznoscSygnalu = 1
 int waznoscRaw = 12
 color kolorShort = color.rgb(239, 83, 80)
 color kolorLong = color.rgb(38, 166, 154)
@@ -95,6 +97,13 @@ var int[] dotknieteHighBar = array.new_int()
 var float[] dotknieteLow = array.new_float()
 var int[] dotknieteLowPivotBar = array.new_int()
 var int[] dotknieteLowBar = array.new_int()
+// Ostatnia zuzyta pula po każdej stronie. Stary poziom nie może wrócić do
+// radaru po CONF; poziom o zbliżonej cenie staje się ponownie ważny dopiero,
+// gdy po potwierdzeniu powstanie nowy pivot.
+var float ostatniZuzytyHigh = na
+var int ostatniZuzytyHighBar = na
+var float ostatniZuzytyLow = na
+var int ostatniZuzytyLowBar = na
 
 f_dodaj_lub_polacz(float[] ceny, int[] bary, float[] jakosci, float nowaCena, int nowyBar, float nowaJakosc, float progLaczenia) =>
     int indeks = -1
@@ -127,6 +136,24 @@ f_zapamietaj_dotkniety(float[] ceny, int[] baryPivot, int[] baryDotkniecia, floa
         array.shift(ceny)
         array.shift(baryPivot)
         array.shift(baryDotkniecia)
+
+f_usun_dotkniety(float[] ceny, int[] baryPivot, int[] baryDotkniecia, float cena) =>
+    if array.size(ceny) > 0
+        for i = array.size(ceny) - 1 to 0
+            if math.abs(array.get(ceny, i) - cena) <= syminfo.mintick
+                array.remove(ceny, i)
+                array.remove(baryPivot, i)
+                array.remove(baryDotkniecia, i)
+
+f_usun_aktywna_pule(float[] ceny, int[] bary, float[] jakosci, float cena, int pivotBar) =>
+    if array.size(ceny) > 0
+        for i = array.size(ceny) - 1 to 0
+            bool tenSamPivot = array.get(bary, i) == pivotBar
+            bool tenSamPoziom = math.abs(array.get(ceny, i) - cena) <= syminfo.mintick
+            if tenSamPivot or tenSamPoziom
+                array.remove(ceny, i)
+                array.remove(bary, i)
+                array.remove(jakosci, i)
 
 float atr = ta.atr(okresAtr)
 float pivotHigh = ta.pivothigh(high, swieceSwingu, swieceSwingu)
@@ -352,6 +379,20 @@ if bullishSetup
         oczekujeBullWybicie := bullishSetupWybicie
         oczekujeBullBar := bar_index
 
+// Potwierdzony setup jest już rozegranym zdarzeniem. Usuwamy jego poziom z
+// pamięci dotkniętych pul przed rysowaniem radaru, żeby nie wyglądał później
+// jak aktualny poziom wejścia przy retescie.
+if bearishSfp
+    ostatniZuzytyHigh := bearishPoziom
+    ostatniZuzytyHighBar := bar_index
+    f_usun_aktywna_pule(cenyHigh, baryHigh, jakoscHigh, bearishPoziom, bearishPivotBar)
+    f_usun_dotkniety(dotknieteHigh, dotknieteHighPivotBar, dotknieteHighBar, bearishPoziom)
+if bullishSfp
+    ostatniZuzytyLow := bullishPoziom
+    ostatniZuzytyLowBar := bar_index
+    f_usun_aktywna_pule(cenyLow, baryLow, jakoscLow, bullishPoziom, bullishPivotBar)
+    f_usun_dotkniety(dotknieteLow, dotknieteLowPivotBar, dotknieteLowBar, bullishPoziom)
+
 // ==================== WYBÓR TYLKO NAJBLIŻSZYCH POZIOMÓW ====================
 var float[] wybraneHigh = array.new_float()
 var int[] wybraneHighBar = array.new_int()
@@ -367,7 +408,9 @@ float limitOdleglosci = limitOdleglosciRadaru
 if ileNadCena > 0 and array.size(cenyHigh) > 0
     for i = 0 to array.size(cenyHigh) - 1
         float poziom = array.get(cenyHigh, i)
-        if poziom > cenaOdniesieniaRadaru and poziom - cenaOdniesieniaRadaru <= limitOdleglosci
+        int pivotBar = array.get(baryHigh, i)
+        bool zuzytyPrzedConf = not na(ostatniZuzytyHigh) and pivotBar <= ostatniZuzytyHighBar and math.abs(poziom - ostatniZuzytyHigh) <= progLaczenia
+        if not zuzytyPrzedConf and poziom > cenaOdniesieniaRadaru and poziom - cenaOdniesieniaRadaru <= limitOdleglosci
             int pozycja = array.size(wybraneHigh)
             if array.size(wybraneHigh) > 0
                 for j = 0 to array.size(wybraneHigh) - 1
@@ -383,7 +426,9 @@ if ileNadCena > 0 and array.size(cenyHigh) > 0
 if ilePodCena > 0 and array.size(cenyLow) > 0
     for i = 0 to array.size(cenyLow) - 1
         float poziom = array.get(cenyLow, i)
-        if poziom < cenaOdniesieniaRadaru and cenaOdniesieniaRadaru - poziom <= limitOdleglosci
+        int pivotBar = array.get(baryLow, i)
+        bool zuzytyPrzedConf = not na(ostatniZuzytyLow) and pivotBar <= ostatniZuzytyLowBar and math.abs(poziom - ostatniZuzytyLow) <= progLaczenia
+        if not zuzytyPrzedConf and poziom < cenaOdniesieniaRadaru and cenaOdniesieniaRadaru - poziom <= limitOdleglosci
             int pozycja = array.size(wybraneLow)
             if array.size(wybraneLow) > 0
                 for j = 0 to array.size(wybraneLow) - 1
@@ -442,12 +487,14 @@ if barstate.islast
             if narysowaneHigh < ileDotknietychNaStrone
                 float poziom = array.get(dotknieteHigh, i)
                 int pivotBar = array.get(dotknieteHighPivotBar, i)
-                line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, 58), style = line.style_dashed, width = 1, force_overlay = true)
-                array.push(linieRadaru, ln)
-                if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
-                    array.push(etykietyRadaru, lb)
-                narysowaneHigh += 1
+                bool zuzytyPrzedConf = not na(ostatniZuzytyHigh) and pivotBar <= ostatniZuzytyHighBar and math.abs(poziom - ostatniZuzytyHigh) <= progLaczenia
+                if not zuzytyPrzedConf
+                    line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorHigh, 58), style = line.style_dashed, width = 1, force_overlay = true)
+                    array.push(linieRadaru, ln)
+                    if pokazNazwy
+                        label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorHigh, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                        array.push(etykietyRadaru, lb)
+                    narysowaneHigh += 1
 
     if pokazDotkniete and ileDotknietychNaStrone > 0 and array.size(dotknieteLow) > 0
         int narysowaneLow = 0
@@ -455,12 +502,14 @@ if barstate.islast
             if narysowaneLow < ileDotknietychNaStrone
                 float poziom = array.get(dotknieteLow, i)
                 int pivotBar = array.get(dotknieteLowPivotBar, i)
-                line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, 58), style = line.style_dashed, width = 1, force_overlay = true)
-                array.push(linieRadaru, ln)
-                if pokazNazwy
-                    label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
-                    array.push(etykietyRadaru, lb)
-                narysowaneLow += 1
+                bool zuzytyPrzedConf = not na(ostatniZuzytyLow) and pivotBar <= ostatniZuzytyLowBar and math.abs(poziom - ostatniZuzytyLow) <= progLaczenia
+                if not zuzytyPrzedConf
+                    line ln = line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = color.new(kolorLow, 58), style = line.style_dashed, width = 1, force_overlay = true)
+                    array.push(linieRadaru, ln)
+                    if pokazNazwy
+                        label lb = label.new(bar_index + 1, poziom, "SFP", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(kolorLow, 62), textcolor = color.white, size = size.tiny, force_overlay = true)
+                        array.push(etykietyRadaru, lb)
+                    narysowaneLow += 1
 
 // ==================== FVG / IFVG — CONFIRMED MULTI-TIMEFRAME BOOKS ====================
 // Every source uses the last closed source candle with lookahead_on. This is the
@@ -748,15 +797,12 @@ if not na(ostatniRawBar) and bar_index - ostatniRawBar > waznoscRaw
     ostatniRawKierunek := 0
 
 // ==================== TYLKO OSTATNI POTWIERDZONY SFP CONF ====================
-var line ostatniaLinia = na
 var label ostatniaEtykieta = na
 var int ostatniSygnalBar = na
 var string ostatniSygnal = "Brak"
 var float ostatniPoziom = na
 
 if bearishSfp or bullishSfp
-    if not na(ostatniaLinia)
-        line.delete(ostatniaLinia)
     if not na(ostatniaEtykieta)
         label.delete(ostatniaEtykieta)
     bool shortSignal = bearishSfp
@@ -764,7 +810,10 @@ if bearishSfp or bullishSfp
     int pivotBar = shortSignal ? bearishPivotBar : bullishPivotBar
     color sygnalKolor = shortSignal ? kolorShort : kolorLong
     int kierunekSygnalu = shortSignal ? -1 : 1
-    bool tenSamRaw = ostatniRawKierunek == kierunekSygnalu and not na(ostatniRawPoziom) and math.abs(ostatniRawPoziom - poziom) <= syminfo.mintick
+    // Ostatni RAW w tym samym kierunku jest poprzednikiem bieżącego CONF.
+    // Nie wymagamy identycznej ceny co do ticka, bo poziom oczekującego setupu
+    // może zostać znormalizowany inaczej między świecą RAW i potwierdzeniem.
+    bool tenSamRaw = ostatniRawKierunek == kierunekSygnalu
     if tenSamRaw
         if not na(ostatniaRawLinia)
             line.delete(ostatniaRawLinia)
@@ -776,16 +825,14 @@ if bearishSfp or bullishSfp
         ostatniRawPoziom := na
         ostatniRawKierunek := 0
     if pokazOstatniSygnal
-        ostatniaLinia := line.new(pivotBar, poziom, bar_index, poziom, xloc = xloc.bar_index, extend = extend.right, color = sygnalKolor, style = line.style_solid, width = 3, force_overlay = true)
-        ostatniaEtykieta := label.new(bar_index + 1, poziom, shortSignal ? "SFP CONF SHORT" : "SFP CONF LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = sygnalKolor, size = size.tiny, force_overlay = true)
+        // CONF to zdarzenie historyczne, nie poziom wejscia przy pozniejszym retescie.
+        // Zostawiamy tylko krotka etykiete na swiecy potwierdzenia, bez poziomej linii.
+        ostatniaEtykieta := label.new(bar_index, poziom, shortSignal ? "SFP CONF SHORT" : "SFP CONF LONG", xloc = xloc.bar_index, yloc = yloc.price, style = label.style_none, textcolor = sygnalKolor, size = size.tiny, force_overlay = true)
     ostatniSygnalBar := bar_index
     ostatniSygnal := shortSignal ? "Bearish / SHORT" : "Bullish / LONG"
     ostatniPoziom := poziom
 
 if not na(ostatniSygnalBar) and bar_index - ostatniSygnalBar > waznoscSygnalu
-    if not na(ostatniaLinia)
-        line.delete(ostatniaLinia)
-        ostatniaLinia := na
     if not na(ostatniaEtykieta)
         label.delete(ostatniaEtykieta)
         ostatniaEtykieta := na

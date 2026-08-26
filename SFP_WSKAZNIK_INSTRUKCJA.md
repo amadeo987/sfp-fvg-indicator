@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.11 guide
+# SK SFP + FVG / IFVG v5.13 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -7,7 +7,7 @@ The main indicator is a compact liquidity and imbalance radar. Its visible hiera
 - `SFP?`: a confirmed quality swing and an active liquidity pool that price has not used yet. Up to three nearest candidates on either side of price are drawn in blue. It is context, not a signal.
 - `SFP`: a candidate that price has touched or swept. It is retained briefly as reaction context and disappears immediately after a second separate retest; one continuous overlap is not counted twice. The short label does not by itself mean RAW or CONF confirmation.
 - `SFP RAW SHORT/LONG`: a wick sweeps the level and the full candle body closes back behind it. RAW is confirmed on candle close and can be disabled independently.
-- `SFP CONF SHORT/LONG`: within the next three candles, price closes beyond the opposite extreme of the RAW candle. This is the strongest state produced by the indicator, but it still requires trading context and risk management.
+- `SFP CONF SHORT/LONG`: within the next three candles, price closes beyond the opposite extreme of the RAW candle. It is a historical confirmation of that setup, not a new entry signal when price returns later. CONF is shown only on its confirmation candle, without a horizontal line. The consumed pool is blocked from returning to the active or touched radar; a nearby level can become valid again only from a genuinely newer pivot.
 
 The default selective quality filter uses a 10/10 swing, a minimum 1.25 ATR reaction, and at most three current `SFP?` levels on each side of price. A used liquidity pool cannot produce another setup.
 
@@ -38,7 +38,7 @@ The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYP
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.11` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.13` script.
 
 ## Limitations
 
