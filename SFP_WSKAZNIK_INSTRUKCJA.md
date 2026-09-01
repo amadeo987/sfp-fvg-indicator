@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.15 guide
+# SK SFP + FVG / IFVG v5.16 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -34,7 +34,7 @@ Open **Settings → Inputs → Moving averages**. EMA 200 is enabled by default.
 
 ## Dual Auto VWAP
 
-Open **Settings → Inputs → Dual Auto VWAP**. Both lines are enabled by default, use `hlc3 = (high + low + close) / 3`, and have no deviation bands. On intraday charts the fast VWAP resets each session/day and the slow VWAP resets each week. On higher chart timeframes their anchors advance automatically: `1D → month / quarter`, `2D-10D → quarter / year`, `11D-60D → year / decade`, and longer charts use decade / century anchors. Each line has its own color and both share a configurable line width.
+Open **Settings → Inputs → Dual Auto VWAP**. Both lines are enabled by default, use `hlc3 = (high + low + close) / 3`, have no deviation bands, and default to a thin 1 px width. On intraday charts the fast VWAP resets each session/day and the slow VWAP resets each week. The first candle of every new anchor is plotted immediately instead of being hidden, so the reset does not create an extra one-candle hole. On higher chart timeframes their anchors advance automatically: `1D → month / quarter`, `2D-10D → quarter / year`, `11D-60D → year / decade`, and longer charts use decade / century anchors. Each line has its own color and both share a configurable line width.
 
 The VWAPs are visual context only. They do not emit `alert()` events and do not change the SFP scanner payload. A crossover is not a standalone entry signal; use price acceptance, rejection or reclaim together with the existing SFP context.
 
@@ -48,7 +48,7 @@ The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYP
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.15` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.16` script.
 
 ## Limitations
 
