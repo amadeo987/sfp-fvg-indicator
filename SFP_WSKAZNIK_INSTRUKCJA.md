@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.13 guide
+# SK SFP + FVG / IFVG v5.14 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -28,6 +28,10 @@ Every source is calculated only from its last closed candle. A classic bullish F
 
 With `Day / month separators` enabled, intraday charts keep Warsaw weekday labels and day separators. Daily, weekly, and monthly charts switch to abbreviated month labels. Monthly charts omit the repeated vertical separator so the bottom of the chart does not become a continuous white strip.
 
+## Moving averages
+
+Open **Settings → Inputs → Moving averages**. EMA 200 is enabled by default. EMA 100 and EMA 50 are available in the same indicator but disabled by default. All three averages use `close` from the current chart timeframe, so no separate timeframe request or higher-timeframe delay is involved. Each EMA has its own color setting, and the shared line width can be set from one to four.
+
 ## Alerts
 
 Enable `SFP scanner alerts only`, then create one TradingView alert with the condition **Any alert() function call**. The only emitted event is `sr_touch` from the integrated 1H/4H scanner. FVG, IFVG, chart-only WATCH, RAW and CONF states remain visual and never generate Telegram notifications.
@@ -38,7 +42,7 @@ The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYP
 
 An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
 
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.13` script.
+The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.14` script.
 
 ## Limitations
 

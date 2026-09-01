@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.13
+// [SK] SFP + FVG / IFVG v5.14
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,11 +7,12 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.13", shorttitle = "SKSFP 5.13", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.14", shorttitle = "SKSFP 5.14", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
 string grupaFvg = "FVG timeframes"
+string grupaSrednie = "Moving averages"
 bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji, display = display.data_window)
 bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.", display = display.data_window)
 bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
@@ -33,6 +34,14 @@ bool wlaczTfC = input.bool(true, "Use", inline = "tfC", group = grupaFvg, displa
 string tfCInput = input.timeframe("1D", "Timeframe 3", inline = "tfC", group = grupaFvg, display = display.data_window)
 int ileFvgNadCena = input.int(2, "Nearest zones above per timeframe", minval = 1, maxval = 8, group = grupaFvg, display = display.data_window)
 int ileFvgPodCena = input.int(6, "Nearest zones below per timeframe", minval = 1, maxval = 8, group = grupaFvg, tooltip = "Shows a deeper stack of still-active FVG/IFVG zones below price so lower imbalances are not hidden by the nearest-zone limit.", display = display.data_window)
+
+bool pokazEma200 = input.bool(true, "EMA 200", inline = "ema200", group = grupaSrednie, tooltip = "Uses close prices and the current chart timeframe.", display = display.data_window)
+color kolorEma200 = input.color(color.rgb(33, 150, 243), "Color", inline = "ema200", group = grupaSrednie, display = display.data_window)
+bool pokazEma100 = input.bool(false, "EMA 100", inline = "ema100", group = grupaSrednie, tooltip = "Uses close prices and the current chart timeframe.", display = display.data_window)
+color kolorEma100 = input.color(color.rgb(255, 152, 0), "Color", inline = "ema100", group = grupaSrednie, display = display.data_window)
+bool pokazEma50 = input.bool(false, "EMA 50", inline = "ema50", group = grupaSrednie, tooltip = "Uses close prices and the current chart timeframe.", display = display.data_window)
+color kolorEma50 = input.color(color.rgb(156, 39, 176), "Color", inline = "ema50", group = grupaSrednie, display = display.data_window)
+int gruboscEma = input.int(2, "Line width", minval = 1, maxval = 4, group = grupaSrednie, display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -83,6 +92,16 @@ int przezroczystoscDni = 45
 int przezroczystoscSeparatorow = 55
 color kolorNazwDni = color.silver
 color kolorSeparatorow = color.white
+
+// ==================== ŚREDNIE KROCZĄCE ====================
+// Wszystkie EMA liczą się bezpośrednio z zamknięć na aktualnym interwale wykresu.
+float ema200 = ta.ema(close, 200)
+float ema100 = ta.ema(close, 100)
+float ema50 = ta.ema(close, 50)
+
+plot(pokazEma200 ? ema200 : na, title = "EMA 200", color = kolorEma200, linewidth = gruboscEma)
+plot(pokazEma100 ? ema100 : na, title = "EMA 100", color = kolorEma100, linewidth = gruboscEma)
+plot(pokazEma50 ? ema50 : na, title = "EMA 50", color = kolorEma50, linewidth = gruboscEma)
 
 // ==================== PAMIĘĆ JAKOŚCIOWYCH SWINGÓW ====================
 var float[] cenyHigh = array.new_float()
