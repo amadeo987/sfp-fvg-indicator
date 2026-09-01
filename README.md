@@ -4,7 +4,7 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 
 ## Included scripts
 
-### SK SFP + FVG / IFVG v5.14
+### SK SFP + FVG / IFVG v5.15
 
 [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
@@ -21,7 +21,8 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 - no directional RAW/CONF signal lines on CRYPTOCAP market-cap indices such as TOTAL, while blue SFP context and FVG/IFVG zones remain visible,
 - confirmed SFP events shown only as short-lived labels on the confirmation candle, with no horizontal CONF line that could look like a later retest entry,
 - a chart-timeframe EMA 200 enabled by default, plus optional EMA 100 and EMA 50 overlays with configurable colors and line width,
-- a short `SKSFP 5.14` status-line name with no scanner table.
+- two band-free `hlc3` Auto VWAP overlays: a faster session/day context and a slower weekly context on intraday charts, with automatic longer anchors on higher chart timeframes,
+- a short `SKSFP 5.15` status-line name with no scanner table.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
@@ -62,7 +63,7 @@ The scanner is integrated into the main SFP/FVG script, so one TradingView indic
 ## Status
 
 - Pine language: **v6**
-- Main indicator: **v5.14**
+- Main indicator: **v5.15**
 - Current-day profile: **v1.0**
 - MTF support/resistance: **v1.0**
 
