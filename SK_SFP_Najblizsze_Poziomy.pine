@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.15
+// [SK] SFP + FVG / IFVG v5.16
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.15", shorttitle = "SKSFP 5.15", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.16", shorttitle = "SKSFP 5.16", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
@@ -48,7 +48,7 @@ bool pokazVwapSzybki = input.bool(true, "Fast VWAP", inline = "vwapFast", group 
 color kolorVwapSzybki = input.color(color.rgb(38, 166, 154), "Color", inline = "vwapFast", group = grupaVwap, display = display.data_window)
 bool pokazVwapWolny = input.bool(true, "Slow VWAP", inline = "vwapSlow", group = grupaVwap, tooltip = "Auto anchor: week on intraday charts, quarter on 1D, year on 2D-10D, decade on 11D-60D, then century.", display = display.data_window)
 color kolorVwapWolny = input.color(color.rgb(126, 87, 194), "Color", inline = "vwapSlow", group = grupaVwap, display = display.data_window)
-int gruboscVwap = input.int(2, "Line width", minval = 1, maxval = 4, group = grupaVwap, tooltip = "Both VWAPs use hlc3 = (high + low + close) / 3. No bands or VWAP alerts are generated.", display = display.data_window)
+int gruboscVwap = input.int(1, "Line width", minval = 1, maxval = 4, group = grupaVwap, tooltip = "Both VWAPs use hlc3 = (high + low + close) / 3. No bands or VWAP alerts are generated.", display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -131,8 +131,10 @@ bool resetVwapWolny = barstate.isfirst or (interwalIntraday ? timeframe.change("
 float vwapSzybki = ta.vwap(hlc3, resetVwapSzybki)
 float vwapWolny = ta.vwap(hlc3, resetVwapWolny)
 
-plot(pokazVwapSzybki and not resetVwapSzybki ? vwapSzybki : na, title = "Fast Auto VWAP", color = kolorVwapSzybki, linewidth = gruboscVwap, style = plot.style_linebr)
-plot(pokazVwapWolny and not resetVwapWolny ? vwapWolny : na, title = "Slow Auto VWAP", color = kolorVwapWolny, linewidth = gruboscVwap, style = plot.style_linebr)
+// Nie ukrywamy świecy resetu. ta.vwap() zwraca już na niej pierwszy punkt nowej
+// kotwicy, więc linia nie dostaje sztucznej jednoswiecowej dziury.
+plot(pokazVwapSzybki ? vwapSzybki : na, title = "Fast Auto VWAP", color = kolorVwapSzybki, linewidth = gruboscVwap, style = plot.style_linebr)
+plot(pokazVwapWolny ? vwapWolny : na, title = "Slow Auto VWAP", color = kolorVwapWolny, linewidth = gruboscVwap, style = plot.style_linebr)
 
 // ==================== PAMIĘĆ JAKOŚCIOWYCH SWINGÓW ====================
 var float[] cenyHigh = array.new_float()
