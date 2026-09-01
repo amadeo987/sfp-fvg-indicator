@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.14
+// [SK] SFP + FVG / IFVG v5.15
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,12 +7,13 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.14", shorttitle = "SKSFP 5.14", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
+indicator("[SK] SFP + FVG / IFVG v5.15", shorttitle = "SKSFP 5.15", overlay = true, max_lines_count = 180, max_labels_count = 120, max_boxes_count = 60, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"
 string grupaFvg = "FVG timeframes"
 string grupaSrednie = "Moving averages"
+string grupaVwap = "Dual Auto VWAP"
 bool wlaczSfp = input.bool(true, "SFP levels and confirmations", group = grupaFunkcji, display = display.data_window)
 bool pokazSfpRaw = input.bool(true, "Show SFP RAW after a valid sweep", group = grupaFunkcji, tooltip = "A thin dashed line appears after a wick sweep and a confirmed close back behind the level. RAW is not yet a structure confirmation.", display = display.data_window)
 bool wlaczFvg = input.bool(true, "FVG / IFVG nearest zones", group = grupaFunkcji, display = display.data_window)
@@ -42,6 +43,12 @@ color kolorEma100 = input.color(color.rgb(255, 152, 0), "Color", inline = "ema10
 bool pokazEma50 = input.bool(false, "EMA 50", inline = "ema50", group = grupaSrednie, tooltip = "Uses close prices and the current chart timeframe.", display = display.data_window)
 color kolorEma50 = input.color(color.rgb(156, 39, 176), "Color", inline = "ema50", group = grupaSrednie, display = display.data_window)
 int gruboscEma = input.int(2, "Line width", minval = 1, maxval = 4, group = grupaSrednie, display = display.data_window)
+
+bool pokazVwapSzybki = input.bool(true, "Fast VWAP", inline = "vwapFast", group = grupaVwap, tooltip = "Auto anchor: session/day on intraday charts, month on 1D, quarter on 2D-10D, year on 11D-60D, then decade.", display = display.data_window)
+color kolorVwapSzybki = input.color(color.rgb(38, 166, 154), "Color", inline = "vwapFast", group = grupaVwap, display = display.data_window)
+bool pokazVwapWolny = input.bool(true, "Slow VWAP", inline = "vwapSlow", group = grupaVwap, tooltip = "Auto anchor: week on intraday charts, quarter on 1D, year on 2D-10D, decade on 11D-60D, then century.", display = display.data_window)
+color kolorVwapWolny = input.color(color.rgb(126, 87, 194), "Color", inline = "vwapSlow", group = grupaVwap, display = display.data_window)
+int gruboscVwap = input.int(2, "Line width", minval = 1, maxval = 4, group = grupaVwap, tooltip = "Both VWAPs use hlc3 = (high + low + close) / 3. No bands or VWAP alerts are generated.", display = display.data_window)
 
 // Parametry zaawansowane są celowo stałe, żeby panel Inputs pozostał prosty.
 string tryb = "Selektywny"
@@ -102,6 +109,30 @@ float ema50 = ta.ema(close, 50)
 plot(pokazEma200 ? ema200 : na, title = "EMA 200", color = kolorEma200, linewidth = gruboscEma)
 plot(pokazEma100 ? ema100 : na, title = "EMA 100", color = kolorEma100, linewidth = gruboscEma)
 plot(pokazEma50 ? ema50 : na, title = "EMA 50", color = kolorEma50, linewidth = gruboscEma)
+
+// ==================== DUAL AUTO VWAP ====================
+// Szybka i wolna kotwica zmieniają okres automatycznie wraz z interwałem wykresu.
+// Na intraday odpowiadają odpowiednio bieżącej sesji/dniu i bieżącemu tygodniowi.
+// Obie linie korzystają z typowej ceny hlc3 i nie emitują żadnych alertów.
+float sekundyWykresu = timeframe.in_seconds()
+float sekundyJednegoDnia = timeframe.in_seconds("1D")
+float sekundyDziesieciuDni = timeframe.in_seconds("10D")
+float sekundySzesdziesieciuDni = timeframe.in_seconds("60D")
+bool interwalIntraday = timeframe.isintraday
+bool interwalJednodniowy = not interwalIntraday and sekundyWykresu <= sekundyJednegoDnia
+bool interwalDoDziesieciuDni = not interwalIntraday and not interwalJednodniowy and sekundyWykresu <= sekundyDziesieciuDni
+bool interwalDoSzesdziesieciuDni = not interwalIntraday and not interwalJednodniowy and not interwalDoDziesieciuDni and sekundyWykresu <= sekundySzesdziesieciuDni
+bool nowaDekada = barstate.isfirst or (year != year[1] and year % 10 == 0)
+bool noweStulecie = barstate.isfirst or (year != year[1] and year % 100 == 0)
+
+bool resetVwapSzybki = barstate.isfirst or (interwalIntraday ? timeframe.change("1D") : interwalJednodniowy ? timeframe.change("1M") : interwalDoDziesieciuDni ? timeframe.change("3M") : interwalDoSzesdziesieciuDni ? timeframe.change("12M") : nowaDekada)
+bool resetVwapWolny = barstate.isfirst or (interwalIntraday ? timeframe.change("1W") : interwalJednodniowy ? timeframe.change("3M") : interwalDoDziesieciuDni ? timeframe.change("12M") : interwalDoSzesdziesieciuDni ? nowaDekada : noweStulecie)
+
+float vwapSzybki = ta.vwap(hlc3, resetVwapSzybki)
+float vwapWolny = ta.vwap(hlc3, resetVwapWolny)
+
+plot(pokazVwapSzybki and not resetVwapSzybki ? vwapSzybki : na, title = "Fast Auto VWAP", color = kolorVwapSzybki, linewidth = gruboscVwap, style = plot.style_linebr)
+plot(pokazVwapWolny and not resetVwapWolny ? vwapWolny : na, title = "Slow Auto VWAP", color = kolorVwapWolny, linewidth = gruboscVwap, style = plot.style_linebr)
 
 // ==================== PAMIĘĆ JAKOŚCIOWYCH SWINGÓW ====================
 var float[] cenyHigh = array.new_float()
