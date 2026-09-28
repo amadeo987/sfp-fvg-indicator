@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.16 guide
+# SK SFP + FVG / IFVG v5.17 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -30,26 +30,30 @@ With `Day / month separators` enabled, intraday charts keep Warsaw weekday label
 
 ## Moving averages
 
-Open **Settings → Inputs → Moving averages**. EMA 200 is enabled by default. EMA 100 and EMA 50 are available in the same indicator but disabled by default. All three averages use `close` from the current chart timeframe, so no separate timeframe request or higher-timeframe delay is involved. Each EMA has its own color setting, and the shared line width can be set from one to four.
+Open **Settings → Inputs → Moving averages**. EMA 200 is enabled by default. EMA 100, EMA 50 and one custom-length EMA are available in the same indicator but disabled by default. All averages use `close` from the current chart timeframe, so no separate timeframe request or higher-timeframe delay is involved. Each EMA has its own color setting, and the shared line width can be set from one to four.
 
 ## Dual Auto VWAP
 
 Open **Settings → Inputs → Dual Auto VWAP**. Both lines are enabled by default, use `hlc3 = (high + low + close) / 3`, have no deviation bands, and default to a thin 1 px width. On intraday charts the fast VWAP resets each session/day and the slow VWAP resets each week. The first candle of every new anchor is plotted immediately instead of being hidden, so the reset does not create an extra one-candle hole. On higher chart timeframes their anchors advance automatically: `1D → month / quarter`, `2D-10D → quarter / year`, `11D-60D → year / decade`, and longer charts use decade / century anchors. Each line has its own color and both share a configurable line width.
 
-The VWAPs are visual context only. They do not emit `alert()` events and do not change the SFP scanner payload. A crossover is not a standalone entry signal; use price acceptance, rejection or reclaim together with the existing SFP context.
+The VWAPs are visual context only. They do not emit alerts. A crossover is not a standalone entry signal; use price acceptance, rejection or reclaim together with the existing SFP context.
+
+## PVP naked POC
+
+Open **Settings → Inputs → PVP naked POC**. The module creates POC levels from completed Daily, Weekly and Monthly profiles. It distributes every lower-timeframe bar's volume proportionally across the price rows crossed by that bar, selects the highest-volume row, and extends its midpoint to the right. The sampling timeframe and row count are configurable; lower sampling is more detailed but heavier and provides less history.
+
+Only still-untouched levels remain visible. The first later sample whose high-low range crosses a level removes it immediately. Daily, Weekly and Monthly visibility, nearest-level limits, colors and labels can be configured independently. Lines are 1 px and white by default.
+
+This is a deterministic OHLCV approximation. Pine Script cannot read TradingView's internal tick-by-price PVP engine, so exact POC values can differ from the built-in Periodic Volume Profile, especially when the selected sampling timeframe is coarse.
+
+## Watermark
+
+The `[SK] Watermark v1.2` controls are integrated under the three Watermark groups. The default text is `ig: amadeusz.dyrek` in the upper-right corner. It supports a second line, multiple font styles, bold/italic formatting, underline/strikethrough, colors, size, position and edge offset. Disable `Show watermark` when a clean chart is needed.
 
 ## Alerts
 
-Enable `SFP scanner alerts only`, then create one TradingView alert with the condition **Any alert() function call**. The only emitted event is `sr_touch` from the integrated 1H/4H scanner. FVG, IFVG, chart-only WATCH, RAW and CONF states remain visual and never generate Telegram notifications.
-
-The payload contains only the scanner event, short market label, timeframe and source-bar time. It contains no credentials. Put the private HTTPS endpoint only in TradingView's Webhook URL field.
-
-The integrated scanner covers BTC, ETH, SOL, XRP and LINK perpetuals on OKX, HYPE perpetual on Hyperliquid, and COMEX gold/silver continuous futures. Telegram formats these scanner events as one short line such as `SFP DOTKNIĘTE — BTC 1H`. Run the alert on a 1H or lower chart so 1H intrabar touches are not skipped.
-
-An alert uses a saved snapshot of the script and settings. Delete and recreate it after a code or input change.
-
-The old standalone `SK SR Scan` is not needed from v5.7 onward. Remove it from the chart only after recreating its alert against the main `SKSFP 5.16` script.
+SKSFP v5.17 is visual-only. It contains no `alert()` or `alertcondition()` calls and has no Telegram/webhook dependency. Removing its obsolete indicator alert does not affect separate price or drawing alerts.
 
 ## Limitations
 
-WATCH is not a prediction, and CONF is not a complete strategy. The indicator never places orders. Historical testing of the SFP condition alone did not establish a standalone net-of-cost trading edge.
+WATCH is not a prediction, and CONF is not a complete strategy. PVP nPOC levels are context, not automatic entries. The indicator never places orders. Historical testing of the SFP condition alone did not establish a standalone net-of-cost trading edge.
