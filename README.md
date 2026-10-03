@@ -1,10 +1,10 @@
-# SK TradingView Indicators
+# ad TradingView Indicators
 
 Open Pine Script v6 indicators for discretionary chart analysis. They do not place orders and do not require exchange API keys.
 
 ## Included scripts
 
-### SK SFP + FVG / IFVG v5.17
+### ad SFP + FVG / IFVG v5.17
 
 [`SK_SFP_Najblizsze_Poziomy.pine`](./SK_SFP_Najblizsze_Poziomy.pine) combines:
 
@@ -22,19 +22,19 @@ Open Pine Script v6 indicators for discretionary chart analysis. They do not pla
 - a chart-timeframe EMA 200 enabled by default, optional EMA 100 and EMA 50 overlays, and one configurable custom-length EMA,
 - two band-free `hlc3` Auto VWAP overlays: a faster session/day context and a slower weekly context on intraday charts, with automatic longer anchors on higher chart timeframes, thin 1 px defaults, and no omitted reset candle,
 - integrated PVP-style naked Daily/Weekly/Monthly POC levels based on selectable lower-timeframe OHLCV samples, extended right only while untouched,
-- the configurable viewport watermark from `[SK] Watermark`, enabled by default with `ig: amadeusz.dyrek`,
+- the configurable viewport watermark from `[ad] Watermark`, enabled by default with `ig: amadeusz.dyrek`,
 - no `alert()` calls, Telegram scanner, webhook router, bot token or exchange API key,
-- a short `SKSFP 5.17` status-line name with no scanner table.
+- a short `adSFP 5.17` status-line name with no scanner table.
 
 See [`SFP_WSKAZNIK_INSTRUKCJA.md`](./SFP_WSKAZNIK_INSTRUKCJA.md).
 
-### SK Current Day POC / VAH / VAL v1.0
+### ad Current Day POC / VAH / VAL v1.0
 
 [`SK_Current_Day_POC_VAH_VAL.pine`](./SK_Current_Day_POC_VAH_VAL.pine) draws a developing current-day POC, VAH, and VAL on intraday charts. The default profile day is the full UTC day for 24/7 crypto markets.
 
 The profile is an approximation based on chart-bar volume distributed across configurable price rows. It can differ from TradingView's built-in Volume Profile, which can use finer intrabar data. See [`CURRENT_DAY_PROFILE_GUIDE.md`](./CURRENT_DAY_PROFILE_GUIDE.md).
 
-### SK MTF Nearest Support / Resistance v1.0
+### ad MTF Nearest Support / Resistance v1.0
 
 [`SK_MTF_Nearest_Support_Resistance.pine`](./SK_MTF_Nearest_Support_Resistance.pine) shows the nearest confirmed pivot support below price and resistance above price from up to three selected source timeframes. It is intentionally separate from the main SFP indicator. See [`SUPPORT_RESISTANCE_GUIDE.md`](./SUPPORT_RESISTANCE_GUIDE.md).
 
@@ -47,7 +47,7 @@ The profile is an approximation based on chart-bar volume distributed across con
 
 ## TradingView publication
 
-The canonical TradingView publication is the single private, protected entry **`[SK] SFP + FVG / IFVG`**. New releases must use **Pine Editor → Publish script → Update existing script** and select that stable entry. Do not publish a new version-numbered entry for routine updates; the saved source can keep its visible `SKSFP x.y` version while the publication URL and access target stay unchanged.
+The canonical TradingView publication is the single private, protected entry **`[ad] SFP + FVG / IFVG`**. New releases must use **Pine Editor → Publish script → Update existing script** and select that stable entry. Do not publish a new version-numbered entry for routine updates; the saved source can keep its visible `adSFP x.y` version while the publication URL and access target stay unchanged.
 
 ## Alerts
 

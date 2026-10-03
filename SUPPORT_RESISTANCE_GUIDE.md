@@ -1,4 +1,4 @@
-# SK MTF Nearest Support / Resistance v1.0
+# ad MTF Nearest Support / Resistance v1.0
 
 This standalone Pine v6 indicator shows the nearest confirmed pivot resistance above price and pivot support below price from up to three selected timeframes.
 

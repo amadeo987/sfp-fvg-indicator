@@ -1,4 +1,4 @@
-# SK Current Day POC / VAH / VAL v1.0 guide
+# ad Current Day POC / VAH / VAL v1.0 guide
 
 This separate overlay estimates the developing current-day volume profile and draws:
 
