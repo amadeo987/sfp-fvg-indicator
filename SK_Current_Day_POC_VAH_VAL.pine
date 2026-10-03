@@ -1,10 +1,10 @@
-// [SK] Current Day POC / VAH / VAL v1.0
+// [ad] Current Day POC / VAH / VAL v1.0
 // Developing current-session profile built from visible chart bars. Values are
 // approximate because Pine scripts do not receive TradingView's internal
 // tick-by-tick Volume Profile bins.
 
 //@version=6
-indicator("[SK] Current Day POC / VAH / VAL v1.0", shorttitle = "SK DAY VP", overlay = true, max_lines_count = 10, max_labels_count = 10)
+indicator("[ad] Current Day POC / VAH / VAL v1.0", shorttitle = "ad DAY VP", overlay = true, max_lines_count = 10, max_labels_count = 10)
 
 string groupProfile = "Current day profile"
 string profileTimezone = input.string("Etc/UTC", "Profile timezone", options = ["Etc/UTC", "Europe/Warsaw", "America/New_York", "exchange"], group = groupProfile)

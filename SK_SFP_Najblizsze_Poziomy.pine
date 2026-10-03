@@ -1,4 +1,4 @@
-// [SK] SFP + FVG / IFVG v5.17
+// [ad] SFP + FVG / IFVG v5.17
 // Radar aktualnych pul płynności (WATCH), na których może powstać SFP.
 // Poziom kandydujący pochodzi wyłącznie z potwierdzonego i jakościowego swingu.
 // Sweep knotem i powrót korpusu tworzą RAW. Domyślny sygnał CONF powstaje dopiero po późniejszym
@@ -7,7 +7,7 @@
 // Nie jest to rekomendacja inwestycyjna ani obietnica reakcji ceny.
 
 //@version=6
-indicator("[SK] SFP + FVG / IFVG v5.17", shorttitle = "SKSFP 5.17", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 60, max_bars_back = 5000, dynamic_requests = true)
+indicator("[ad] SFP + FVG / IFVG v5.17", shorttitle = "adSFP 5.17", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 60, max_bars_back = 5000, dynamic_requests = true)
 
 // ==================== PROSTE USTAWIENIA ====================
 string grupaFunkcji = "Features"

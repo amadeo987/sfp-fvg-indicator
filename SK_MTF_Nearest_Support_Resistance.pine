@@ -1,9 +1,9 @@
-// [SK] MTF Nearest Support / Resistance v1.0
+// [ad] MTF Nearest Support / Resistance v1.0
 // Shows the nearest confirmed pivot support and resistance from up to three timeframes.
 // Source values use only closed source-timeframe candles. This indicator never places orders.
 
 //@version=6
-indicator("[SK] MTF Nearest Support / Resistance v1.0", shorttitle = "SK MTF S/R", overlay = true, max_lines_count = 12, max_labels_count = 12, dynamic_requests = true)
+indicator("[ad] MTF Nearest Support / Resistance v1.0", shorttitle = "ad MTF S/R", overlay = true, max_lines_count = 12, max_labels_count = 12, dynamic_requests = true)
 
 string groupTimeframes = "Timeframes"
 string groupDetection = "Detection"

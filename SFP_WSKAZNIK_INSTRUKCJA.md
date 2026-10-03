@@ -1,4 +1,4 @@
-# SK SFP + FVG / IFVG v5.17 guide
+# ad SFP + FVG / IFVG v5.17 guide
 
 The main indicator is a compact liquidity and imbalance radar. Its visible hierarchy is `SFP? → SFP → RAW → CONF`.
 
@@ -48,11 +48,11 @@ This is a deterministic OHLCV approximation. Pine Script cannot read TradingView
 
 ## Watermark
 
-The `[SK] Watermark v1.2` controls are integrated under the three Watermark groups. The default text is `ig: amadeusz.dyrek` in the upper-right corner. It supports a second line, multiple font styles, bold/italic formatting, underline/strikethrough, colors, size, position and edge offset. Disable `Show watermark` when a clean chart is needed.
+The `[ad] Watermark v1.2` controls are integrated under the three Watermark groups. The default text is `ig: amadeusz.dyrek` in the upper-right corner. It supports a second line, multiple font styles, bold/italic formatting, underline/strikethrough, colors, size, position and edge offset. Disable `Show watermark` when a clean chart is needed.
 
 ## Alerts
 
-SKSFP v5.17 is visual-only. It contains no `alert()` or `alertcondition()` calls and has no Telegram/webhook dependency. Removing its obsolete indicator alert does not affect separate price or drawing alerts.
+adSFP v5.17 is visual-only. It contains no `alert()` or `alertcondition()` calls and has no Telegram/webhook dependency. Removing its obsolete indicator alert does not affect separate price or drawing alerts.
 
 ## Limitations
 
